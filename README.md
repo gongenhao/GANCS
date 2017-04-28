@@ -13,7 +13,7 @@ Currently we are trying to explore multiple kinds of GAN loss include:
 
 ## Loss formulation
 By default
-FLAGS.gene_log_factor = 0 # log loss vs least-square loss
+`FLAGS.gene_log_factor = 0 # log loss vs least-square loss`
 
 FLAGS.gene_dc_factor = 0.9 # data-consistency (kspace) loss vs generator loss
 
