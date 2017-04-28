@@ -11,6 +11,15 @@ Currently we are trying to explore multiple kinds of GAN loss include:
 * WGAN (todo)
 * based on MR priors, such as GAN on both image and k-space
 
+## Generator Model
+### Model from super-resolution paper
+
+### Convolutional Encoder-Decoder with bypasses
+
+
+## Descriminator Model
+Currently we are using 4*(Conv-BN-RELU-POOL)+2*(CONV-BN-RELU)+CONV+MEAN+softmax (for logloss)
+
 ## Loss formulation
 By default
 
