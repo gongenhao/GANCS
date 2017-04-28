@@ -14,10 +14,15 @@ Currently we are trying to explore multiple kinds of GAN loss include:
 ## Loss formulation
 By default
 FLAGS.gene_log_factor = 0 # log loss vs least-square loss
+
 FLAGS.gene_dc_factor = 0.9 # data-consistency (kspace) loss vs generator loss
+
 FLAGS.gene_mse_factor = 0.001 # simple MSE loss originally for forward-passing model vs GAN loss
+
 gene_fool_loss = FLAGS.gene_log_factor * gene_log_loss + (1-FLAGS.gene_log_factor) * gene_LS_loss
+
 gene_non_mse_loss = FLAGS.gene_dc_factor * gene_dc_loss + (1-FLAGS.gene_dc_factor) * gene_fool_loss
+
 gene_loss = FLAGS.gene_mse_factor * gene_mse_loss + (1- FLAGS.gene_mse_factor) * gene_non_mse_loss
 
 ## References
