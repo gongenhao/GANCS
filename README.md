@@ -36,6 +36,22 @@ GAN loss = generator loss + discriminator loss
 
 `gene_loss = FLAGS.gene_mse_factor * gene_mse_loss + (1- FLAGS.gene_mse_factor) * gene_non_mse_loss`
 
+## Dataset
+Dataset is parsed to pngs saved in specific folders
+* Phantom dataset
+* Knee dataset
+* DCE dataset
+
+## Results
+Multiple results are exported while traning
+* loss changes
+* test results (zero-fill VS Recon VS Ref) saved to png for each epoch
+* some of the train results are exported to png, WARNING, there was a memory bug before when we try to export all train results
+* layers (some layers are skipped) of generator and detectors are exported into json after each epoch.
+
+
+## Training example 
+
 ## References
 https://github.com/david-gpu/srez
 https://arxiv.org/abs/1609.04802
