@@ -83,9 +83,9 @@ def _save_checkpoint(train_data, batch):
     saver = tf.train.Saver(sharded=True)
     saver.save(td.sess, newname)
 
-    print("    Checkpoint saved")
+    print("Checkpoint saved")
 
-def train_model(train_data, num_sample_train=984, num_sample_test=16):
+def train_model(train_data, num_sample_train=1984, num_sample_test=116):
     td = train_data
 
     # update merge_all_summaries() to tf.summary.merge_all
@@ -108,7 +108,7 @@ def train_model(train_data, num_sample_train=984, num_sample_test=16):
 
     while not done:
         batch += 1
-        gene_loss = disc_real_loss = disc_fake_loss = -1.234
+        gene_ls_loss = gene_dc_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
 
         feed_dict = {td.learning_rate : lrval}
         
@@ -118,17 +118,17 @@ def train_model(train_data, num_sample_train=984, num_sample_test=16):
         # ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.disc_real_loss, td.disc_fake_loss, 
         #        td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
         # _, _, gene_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
-        ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.disc_real_loss, td.disc_fake_loss]                   
-        _, _, gene_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
+        ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
+        _, _, gene_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
             
     
         # verbose training progress
         if batch % 10 == 0:
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
-            print('Progress[%3d%%], ETA[%4dm], Batch [%4d], G_Loss[%3.3f], D_Real_Loss[%3.3f], D_Fake_Loss[%3.3f]' %
+            print('Progress[%3d%%], ETA[%4dm], Batch [%4d], G_DC_Loss[%3.3f], G_LS_Loss[%3.3f], D_Real_Loss[%3.3f], D_Fake_Loss[%3.3f]' %
                   (int(100*elapsed/FLAGS.train_time), FLAGS.train_time - elapsed,
-                   batch, gene_loss, disc_real_loss, disc_fake_loss))
+                   batch, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss))
 
             # Finished?            
             current_progress = elapsed / FLAGS.train_time
@@ -169,9 +169,9 @@ def train_model(train_data, num_sample_train=984, num_sample_test=16):
             num_batch_train = num_sample_train / FLAGS.batch_size
             num_batch_test = num_sample_test / FLAGS.batch_size            
             # get train data
-            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.disc_real_loss, td.disc_fake_loss, 
+            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
                    td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
-            _, _, gene_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
+            _, _, gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output, mask = td.sess.run(ops, feed_dict=feed_dict)
             print('train sample size:',train_feature.shape, train_label.shape, train_output.shape)
             _summarize_progress(td, train_feature, train_label, train_output, batch%num_batch_train, 'train')
 
@@ -183,3 +183,4 @@ def train_model(train_data, num_sample_train=984, num_sample_test=16):
 
     _save_checkpoint(td, batch)
     print('Finished training!')
+
