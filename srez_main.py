@@ -36,7 +36,7 @@ tf.app.flags.DEFINE_string('checkpoint_dir', 'checkpoint',
 tf.app.flags.DEFINE_integer('checkpoint_period', 10000,
                             "Number of batches in between checkpoints")
 
-tf.app.flags.DEFINE_string('dataset', 'dataset',
+tf.app.flags.DEFINE_string('dataset', '',
                            "Path to the dataset directory.")
 
 tf.app.flags.DEFINE_string('dataset_output', '',
@@ -55,7 +55,7 @@ tf.app.flags.DEFINE_string('run', 'demo',
 tf.app.flags.DEFINE_float('gene_log_factor', 0,
                           "Multiplier for generator fool loss term, weighting log-loss vs LS loss")
 
-tf.app.flags.DEFINE_float('gene_dc_factor', .90,
+tf.app.flags.DEFINE_float('gene_dc_factor', 0.01,
                           "Multiplier for generator data-consistency L2 loss term for data consistency, weighting Data-Consistency with GD-loss for GAN-loss")
 
 tf.app.flags.DEFINE_float('gene_mse_factor', .001,
@@ -67,7 +67,7 @@ tf.app.flags.DEFINE_float('learning_beta1', 0.5,
 tf.app.flags.DEFINE_float('learning_rate_start', 0.00020,
                           "Starting learning rate used for AdamOptimizer")
 
-tf.app.flags.DEFINE_integer('learning_rate_half_life', 5000,
+tf.app.flags.DEFINE_integer('learning_rate_half_life', 1000,
                             "Number of batches until learning rate is halved")
 
 tf.app.flags.DEFINE_bool('log_device_placement', False,
@@ -76,7 +76,7 @@ tf.app.flags.DEFINE_bool('log_device_placement', False,
 tf.app.flags.DEFINE_integer('sample_size', 128,
                             "Image sample size in pixels. Range [64,128]")
 
-tf.app.flags.DEFINE_integer('summary_period', 200,
+tf.app.flags.DEFINE_integer('summary_period', 500,
                             "Number of batches between summary data dumps")
 
 tf.app.flags.DEFINE_integer('summary_train_period', 50,
@@ -85,7 +85,7 @@ tf.app.flags.DEFINE_integer('summary_train_period', 50,
 tf.app.flags.DEFINE_integer('random_seed', 0,
                             "Seed used to initialize rng.")
 
-tf.app.flags.DEFINE_integer('test_vectors', 16,
+tf.app.flags.DEFINE_integer('test_vectors', 16
                             """Number of features to use for testing""")
                             
 tf.app.flags.DEFINE_string('train_dir', 'train',
@@ -250,7 +250,7 @@ def _train():
      disc_real_output, disc_fake_output, disc_var_list, disc_layers] = \
             srez_model.create_model(sess, noisy_train_features, train_labels)
 
-    gene_loss = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
+    gene_loss, gene_dc_loss, gene_ls_loss = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
     disc_real_loss, disc_fake_loss = \
                      srez_model.create_discriminator_loss(disc_real_output, disc_fake_output)
     disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')
@@ -273,3 +273,4 @@ def main(argv=None):
 
 if __name__ == '__main__':
   tf.app.run()
+

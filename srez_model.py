@@ -537,7 +537,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     # Upside-down all-convolutional resnet
 
     mapsize = 3
-    res_units  = [32, 16, 8]#[256, 128, 96]
+    res_units  = [64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
 
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -719,7 +719,8 @@ def create_generator_loss(disc_output, gene_output, features, labels):
     gene_loss     = tf.add((1.0 - FLAGS.gene_mse_factor) * gene_non_mse_l2, 
                             FLAGS.gene_mse_factor * gene_mse_loss, name='gene_loss')
     
-    return gene_loss    
+    return gene_loss, gene_dc_loss, gene_ls_loss
+    
 
 def create_discriminator_loss(disc_real_output, disc_fake_output):
     # I.e. did we correctly identify the input as real or not?
@@ -757,5 +758,6 @@ def create_optimizers(gene_loss, gene_var_list,
     disc_minimize     = disc_opti.minimize(disc_loss, var_list=disc_var_list, name='disc_loss_minimize', global_step=global_step)
     
     return (global_step, learning_rate, gene_minimize, disc_minimize)
+
 
 
