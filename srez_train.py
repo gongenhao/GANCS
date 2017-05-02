@@ -15,7 +15,7 @@ def _summarize_progress(train_data, feature, label, gene_output, batch, suffix, 
     size = [label.shape[1], label.shape[2]]
 
     # complex input zpad into r and channel
-    complex_zpad = tf.image.resize_complex_zpad_neighbor(feature, size)
+    complex_zpad = tf.image.resize_nearest_neighbor(feature, size)
     complex_zpad = tf.maximum(tf.minimum(complex_zpad, 1.0), 0.0)
 
     # zpad magnitude
