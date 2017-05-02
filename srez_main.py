@@ -86,7 +86,7 @@ tf.app.flags.DEFINE_integer('summary_train_period', 50,
 tf.app.flags.DEFINE_integer('random_seed', 0,
                             "Seed used to initialize rng.")
 
-tf.app.flags.DEFINE_integer('test_vectors', 16,
+tf.app.flags.DEFINE_integer('sample_test', 16,
                             "Number of features to use for testing.")
                             
 tf.app.flags.DEFINE_string('train_dir', 'train',
@@ -220,12 +220,12 @@ def _train():
     filenames_output = get_filenames(dir_file=FLAGS.dataset_output, shuffle_filename=False)
 
     # Separate training and test sets
-    # train_filenames = all_filenames[:-FLAGS.test_vectors]
-    # test_filenames  = all_filenames[-FLAGS.test_vectors:]
-    train_filenames_input = filenames_input[:-FLAGS.test_vectors]
-    test_filenames_input  = filenames_input[-FLAGS.test_vectors:]
-    train_filenames_output = filenames_output[:-FLAGS.test_vectors]
-    test_filenames_output  = filenames_output[-FLAGS.test_vectors:]
+    # train_filenames = all_filenames[:-FLAGS.sample_test]
+    # test_filenames  = all_filenames[-FLAGS.sample_test:]
+    train_filenames_input = filenames_input[:-FLAGS.sample_test]
+    test_filenames_input  = filenames_input[-FLAGS.sample_test:]
+    train_filenames_output = filenames_output[:-FLAGS.sample_test]
+    test_filenames_output  = filenames_output[-FLAGS.sample_test:]
 
     # TBD: Maybe download dataset here
 
