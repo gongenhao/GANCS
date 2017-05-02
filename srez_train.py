@@ -14,34 +14,35 @@ def _summarize_progress(train_data, feature, label, gene_output, batch, suffix, 
 
     size = [label.shape[1], label.shape[2]]
 
-    nearest = tf.image.resize_nearest_neighbor(feature, size)
-    nearest = tf.maximum(tf.minimum(nearest, 1.0), 0.0)
+    # complex input zpad into r and channel
+    complex_zpad = tf.image.resize_complex_zpad_neighbor(feature, size)
+    complex_zpad = tf.maximum(tf.minimum(complex_zpad, 1.0), 0.0)
 
-    # bicubic = tf.image.resize_bicubic(feature, size)
-    # bicubic = tf.maximum(tf.minimum(bicubic, 1.0), 0.0)
-    # grascale of nearest
-    bicubic = tf.sqrt(nearest[:,:,:,0]**2+nearest[:,:,:,1]**2)
-    bicubic = tf.maximum(tf.minimum(bicubic, 1.0), 0.0)
-    bicubic = tf.reshape(bicubic, [FLAGS.batch_size,FLAGS.sample_size,FLAGS.sample_size,1])
-    bicubic = tf.concat(axis=3, values=[bicubic, bicubic])
+    # zpad magnitude
+    mag_zpad = tf.sqrt(complex_zpad[:,:,:,0]**2+complex_zpad[:,:,:,1]**2)
+    mag_zpad = tf.maximum(tf.minimum(mag_zpad, 1.0), 0.0)
+    mag_zpad = tf.reshape(mag_zpad, [FLAGS.batch_size,FLAGS.sample_size,FLAGS.sample_size,1])
+    mag_zpad = tf.concat(axis=3, values=[mag_zpad, mag_zpad])
     
-    clipped = tf.maximum(tf.minimum(gene_output, 1.0), 0.0)
+    # output magnitude
+    mag_output = tf.maximum(tf.minimum(gene_output, 1.0), 0.0)
 
-    # first 2 channel copy
-    clipped = tf.concat(axis=3, values=[clipped, clipped])
-    label = tf.concat(axis=3, values=[label, label])
+    # concat axis for magnitnude image
+    mag_output = tf.concat(axis=3, values=[mag_output, mag_output])
+    mag_gt = tf.concat(axis=3, values=[label, label])
 
-    image   = tf.concat(axis=2, values=[nearest, bicubic, clipped, label])
-
+    # concate for visualize image
+    image   = tf.concat(axis=2, values=[complex_zpad, mag_zpad, mag_output, mag_gt])
     image = image[0:max_samples,:,:,:]
     image = tf.concat(axis=0, values=[image[i,:,:,:] for i in range(max_samples)])
     image = td.sess.run(image)
-    print('save to image,', type(image))
-    print('save to image,', image.shape)
+    print('save to image size {0} type {1}', image.shape, type(image))
+    
+    # 3rd channel for visualization
+    mag_3rd = np.maximum(image[:,:,0],image[:,:,1])
+    image = np.concatenate((image, mag_3rd[:,:,np.newaxis]),axis=2)
 
-    mag = np.maximum(image[:,:,0],image[:,:,1])
-    image = np.concatenate((image,mag[:,:,np.newaxis]),axis=2)
-
+    # save to image file
     print('save to image,', image.shape)
     filename = 'batch%06d_%s.png' % (batch, suffix)
     filename = os.path.join(FLAGS.train_dir, filename)
@@ -50,11 +51,20 @@ def _summarize_progress(train_data, feature, label, gene_output, batch, suffix, 
 
     # save layers and var_list
     if gene_param is not None:
+        #add feature 
+        print('save input and output:',
+              feature.shape, label.shape, gene_output.shape)
+        gene_param['feature'] = feature.tolist()
+        gene_param['label'] = label.tolist()
+        gene_param['gene_output'] = gene_output.tolist()
+        
+        # save json
         filename = 'batch%06d_%s.json' % (batch, suffix)
         filename = os.path.join(FLAGS.train_dir, filename)
         with open(filename, 'w') as outfile:
             json.dump(gene_param, outfile)
         print("    Saved %s" % (filename,))
+
 
 def _save_checkpoint(train_data, batch):
     td = train_data
@@ -101,10 +111,25 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
     done  = False
     batch = 0
 
+    # batch info    
+    size_batch = FLAGS.batch_size
+    num_batch_train = num_sample_train / size_batch
+    num_batch_test = num_sample_test / size_batch            
+
+    # learning rate
     assert FLAGS.learning_rate_half_life % 10 == 0
 
-    # Cache test features and labels (they are small)
-    test_feature, test_label = td.sess.run([td.test_features, td.test_labels])
+    # Cache test features and labels (they are small)    
+    # update: get all test features
+    list_test_features = []
+    list_test_labels = []
+    for batch_test in xrange(num_batch_test):
+        test_feature, test_label = td.sess.run([td.test_features, td.test_labels])
+        list_test_features.append(test_feature)
+        list_test_labels.append(test_label)
+    print('prepare {0} test feature batches'.format(num_batch_test))
+    print([type(x) for x in list_test_features])
+    print([type(x) for x in list_test_labels])
 
     while not done:
         batch += 1
@@ -141,33 +166,37 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
 
         # export test batches
         if batch % FLAGS.summary_period == 0:
-            # Show progress with test features
-            feed_dict = {td.gene_minput: test_feature}
-            # not export var
-            # ops = [td.gene_moutput, td.gene_mlayers, td.gene_var_list, td.disc_var_list, td.disc_layers]
-            # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
+            # loop different test batch
+            for index_batch_test in xrange(num_batch_test):
+                # get test feature
+                test_feature = list_test_features[index_batch_test]
+                test_label = list_test_labels[index_batch_test]
             
-            ops = [td.gene_moutput, td.gene_mlayers, td.disc_layers]
-            gene_output, gene_layers, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
-            # print('gene_var_list',[x.shape for x in gene_var_list])
-            print('gene_layers',[x.shape for x in gene_layers])
-            # print('disc_var_list',[x.shape for x in disc_var_list])
-            print('disc_layers',[x.shape for x in disc_layers])
-            # gene_layers=gene_layers[:3]+gene_layers[3:-3][::3]+gene_layers[-3:]
-            # disc_layers=disc_layers[:3]+disc_layers[3:-3][::3]+disc_layers[-3:]
-            _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test', 
-                                gene_param={'gene_layers':[x.tolist() for x in gene_layers], 
-                                            'disc_layers':[x.tolist() for x in disc_layers]})
-            # try to reduce mem
-            gene_output = None
-            gene_layers = None
-            disc_layers = None
+                # Show progress with test features
+                feed_dict = {td.gene_minput: test_feature}
+                # not export var
+                # ops = [td.gene_moutput, td.gene_mlayers, td.gene_var_list, td.disc_var_list, td.disc_layers]
+                # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
+                
+                ops = [td.gene_moutput, td.gene_mlayers, td.disc_layers]
+                gene_output, gene_layers, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
+                # print('gene_var_list',[x.shape for x in gene_var_list])
+                print('gene_layers',[x.shape for x in gene_layers])
+                # print('disc_var_list',[x.shape for x in disc_var_list])
+                print('disc_layers',[x.shape for x in disc_layers])
+                # gene_layers=gene_layers[:3]+gene_layers[3:-3][::3]+gene_layers[-3:]
+                # disc_layers=disc_layers[:3]+disc_layers[3:-3][::3]+disc_layers[-3:]
+                _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test{0}'.format(index_batch_test), 
+                                    gene_param={'gene_layers':[x.tolist() for x in gene_layers], 
+                                                'disc_layers':[x.tolist() for x in disc_layers]})
+                # try to reduce mem
+                gene_output = None
+                gene_layers = None
+                disc_layers = None
 
 
         # export train batches
         if OUTPUT_TRAIN_SAMPLES and (batch % FLAGS.summary_train_period == 0):
-            num_batch_train = num_sample_train / FLAGS.batch_size
-            num_batch_test = num_sample_test / FLAGS.batch_size            
             # get train data
             ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
                    td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
