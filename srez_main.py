@@ -1,13 +1,14 @@
 """
 train on GAN-CS 
 example
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom \
                     --dataset_output  /home/enhaog/GANCS/srez/dataset_MRI/phantom \
                     --run train \
                     --gene_mse_factor 1.0
 
 python3 srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom --batch_size 8 --run train --summary_period 123 --sample_size 256 --train_time 10  --train_dir train_save_all                  
+python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom --batch_size 8 --run train --summary_period 123 --sample_size 256 --train_time 10  --train_dir train_temp_dir                  
 
 
 """
@@ -85,8 +86,8 @@ tf.app.flags.DEFINE_integer('summary_train_period', 50,
 tf.app.flags.DEFINE_integer('random_seed', 0,
                             "Seed used to initialize rng.")
 
-tf.app.flags.DEFINE_integer('test_vectors', 16
-                            """Number of features to use for testing""")
+tf.app.flags.DEFINE_integer('test_vectors', 16,
+                            "Number of features to use for testing.")
                             
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            "Output folder where training logs are dumped.")
