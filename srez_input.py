@@ -101,7 +101,7 @@ def setup_inputs_two_sources(sess, filenames_input, filenames_output, image_size
 
 # R=2, porder=1.2, bias=0.1
 # R=5, sample=256, porder=5.0, bias=0.1
-def getMask(size=[128,128], porder = 5.0, bias = 0.1, seed = 0, axis_undersample=1):
+def getMask(size=[128,128], porder = 5.0, bias = 0.1, seed = 0, axis_undersample=1, mute=0):
     mask = np.zeros(size)
     np.random.seed(seed)
     for i in range(size[1]):
@@ -113,14 +113,25 @@ def getMask(size=[128,128], porder = 5.0, bias = 0.1, seed = 0, axis_undersample
             else:
                 mask[:,i]=1
     R_factor = len(mask.flatten())/sum(mask.flatten())
-    print('gen mask for R-factor={0:.4f}'.format(R_factor))
+    if not mute:
+        print('gen mask for R-factor={0:.4f}'.format(R_factor))
 
     # use tf
     return mask, R_factor
 
-def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, axis_undersample=1, capacity_factor=3):
+def genMask(size=[128,128], r_factor=5, axis_undersample=1):
+    bias = 10**(-R_factor/5.0) #empirical value
+    porder = r_factor/2
+    _, R_tmp = getMask(size=size, porder=porder, bias=bias, mute = 1)
+    while R_tmp < r_factor and porder<100:
+        porder*=1.01
+        _, R_tmp = getMask(size=size, porder=porder, bias=bias, mute=1)
+    mask, R_real = getMask(size=size, porder=porder, bias=bias)
+    return mask, R_real
 
-    DEFAULT_MASK, _ = getMask([image_size,image_size], axis_undersample=axis_undersample)
+def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, axis_undersample=1, capacity_factor=3, R_factor=4):
+
+    DEFAULT_MASK, _ = genMask([image_size,image_size], r_factor=R_factor, axis_undersample=axis_undersample)
     DEFAULT_MAKS_TF = tf.cast(tf.constant(DEFAULT_MASK), tf.float32)
     DEFAULT_MAKS_TF_c = tf.cast(DEFAULT_MAKS_TF, tf.complex64)
 
