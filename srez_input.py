@@ -101,37 +101,50 @@ def setup_inputs_two_sources(sess, filenames_input, filenames_output, image_size
 
 # R=2, porder=1.2, bias=0.1
 # R=5, sample=256, porder=5.0, bias=0.1
-def getMask(size=[128,128], porder = 5.0, bias = 0.1, seed = 0, axis_undersample=1, mute=0):
+def getMask(size=[128,128], porder = 5.0, bias = 0.1, scale = 1.0, seed = 0, axis_undersample=1, mute=0):
     mask = np.zeros(size)
     np.random.seed(seed)
     for i in range(size[1]):
-        x = (i-size[1]/2)/(size[1]/2.0)
+        x = (i-size[1]/2.0)/(size[1]/2.0)
         p = np.random.rand() 
         if p <= abs(x)**porder + bias:
             if axis_undersample == 0:
                 mask[i,:]=1
             else:
                 mask[:,i]=1
-    R_factor = len(mask.flatten())/sum(mask.flatten())
+    r_factor = len(mask.flatten())/sum(mask.flatten())
     if not mute:
-        print('gen mask for R-factor={0:.4f}'.format(R_factor))
+        print('gen mask for R-factor={0:.4f}'.format(r_factor))
 
     # use tf
-    return mask, R_factor
+    return mask, r_factor
 
-def genMask(size=[128,128], r_factor=5, axis_undersample=1):
-    bias = 10**(-r_factor/5.0) #empirical value
-    porder = r_factor/2
-    _, R_tmp = getMask(size=size, porder=porder, bias=bias, mute = 1)
-    while R_tmp < r_factor and porder<100:
+# generate a mask based on specified r_factor
+def genMask(size=[128,128], r_factor_designed=5, bias=-1, axis_undersample=1):
+    #empirical value for bias
+    if bias<0:
+        bias = 10**(-r_factor_designed/5.0) 
+    porder = 1.0#r_factor_designed/2.0
+    _, r_factor_tmp = getMask(size=size, porder=porder, bias=bias, mute = 1)
+    while r_factor_tmp < r_factor_designed and porder<100:
         porder*=1.01
-        _, R_tmp = getMask(size=size, porder=porder, bias=bias, mute=1)
-    mask, R_real = getMask(size=size, porder=porder, bias=bias)
-    return mask, R_real
+        _, r_factor_tmp = getMask(size=size, porder=porder, bias=bias, mute=1)
+    mask, r_factor_real = getMask(size=size, porder=porder, bias=bias)
+    print('reduction designed', porder, bias, r_factor_real)    
+    print(np.where(mask[0,:]))
+    return mask, r_factor_real
 
-def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, axis_undersample=1, capacity_factor=3, R_factor=4):
+def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, 
+                             axis_undersample=1, capacity_factor=3, r_factor=4, r_bias=-1, undersample_mask=None):
 
-    DEFAULT_MASK, _ = genMask([image_size,image_size], r_factor=R_factor, axis_undersample=axis_undersample)
+    # generate default mask
+    if undersample_mask is None:
+        DEFAULT_MASK, _ = genMask([image_size,image_size], # kspace size
+                                  r_factor_designed=r_factor, 
+                                  bias=r_bias, 
+                                  axis_undersample=axis_undersample)
+    else:
+        DEFAULT_MASK = undersample_mask
     DEFAULT_MAKS_TF = tf.cast(tf.constant(DEFAULT_MASK), tf.float32)
     DEFAULT_MAKS_TF_c = tf.cast(DEFAULT_MAKS_TF, tf.complex64)
 
