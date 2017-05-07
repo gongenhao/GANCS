@@ -111,8 +111,8 @@ tf.app.flags.DEFINE_integer('axis_undersample', 1,
 tf.app.flags.DEFINE_float('R_factor', 4,
                             "desired reducton/undersampling factor")
 
-tf.app.flags.DEFINE_float('R_bias', -1,
-                            "a uniform component of the undersampling")
+tf.app.flags.DEFINE_float('R_alpha', 1,
+                            "desired variable density parameter x^alpha")
 
 tf.app.flags.DEFINE_string('path_undersampling', '',
                             "specifed file path for undersampling")
@@ -258,14 +258,14 @@ def _train():
                                                                         # undersampling
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
-                                                                        r_bias=FLAGS.R_bias
+                                                                        r_alpha=FLAGS.R_alpha
                                                                         )
     test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
                                                                         image_size=FLAGS.sample_size, 
                                                                         # undersampling
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
-                                                                        r_bias=FLAGS.R_bias)
+                                                                        r_alpha=FLAGS.R_alpha)
     
     # sample size
     num_sample_train = len(train_filenames_input)
