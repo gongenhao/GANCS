@@ -8,7 +8,14 @@ python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom 
                     --gene_mse_factor 1.0
 
 python3 srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom --batch_size 8 --run train --summary_period 123 --sample_size 256 --train_time 10  --train_dir train_save_all                  
-python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom --batch_size 8 --run train --summary_period 123 --sample_size 256 --train_time 10  --train_dir train_temp_dir                  
+python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom2 \
+                    --batch_size 4 --run train --summary_period 125 \
+                    --sample_size 256 \
+                    --train_time 10  \
+                    --sample_test 32 --sample_train 1000 \
+                    --train_dir tmp_specify_train  \
+                    --R_factor 8 \
+                    --R_bias 0.1               
 
 
 """
@@ -88,6 +95,9 @@ tf.app.flags.DEFINE_integer('random_seed', 0,
 
 tf.app.flags.DEFINE_integer('sample_test', 16,
                             "Number of features to use for testing.")
+
+tf.app.flags.DEFINE_integer('sample_train', -1,
+                            "Number of features to use for train. default value is -1 for use all samples except testing samples")
                             
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            "Output folder where training logs are dumped.")
@@ -98,8 +108,14 @@ tf.app.flags.DEFINE_integer('train_time', 20,
 tf.app.flags.DEFINE_integer('axis_undersample', 1,
                             "which axis to undersample")
 
-tf.app.flags.DEFINE_integer('R_factor', 4,
-                            "undersampling factor")
+tf.app.flags.DEFINE_float('R_factor', 4,
+                            "desired reducton/undersampling factor")
+
+tf.app.flags.DEFINE_float('R_bias', -1,
+                            "a uniform component of the undersampling")
+
+tf.app.flags.DEFINE_string('path_undersampling', '',
+                            "specifed file path for undersampling")
 
 
 def mkdirp(path):
@@ -223,20 +239,33 @@ def _train():
     filenames_output = get_filenames(dir_file=FLAGS.dataset_output, shuffle_filename=False)
 
     # Separate training and test sets
-    # train_filenames = all_filenames[:-FLAGS.sample_test]
-    # test_filenames  = all_filenames[-FLAGS.sample_test:]
-    train_filenames_input = filenames_input[:-FLAGS.sample_test]
+    if FLAGS.sample_train > 0:
+        train_filenames_input = filenames_input[:FLAGS.sample_train]    
+        train_filenames_output = filenames_output[:FLAGS.sample_train]        
+    else:
+        train_filenames_input = filenames_input[:-FLAGS.sample_test]    
+        train_filenames_output = filenames_output[:-FLAGS.sample_test]        
+    
+    # test    
     test_filenames_input  = filenames_input[-FLAGS.sample_test:]
-    train_filenames_output = filenames_output[:-FLAGS.sample_test]
     test_filenames_output  = filenames_output[-FLAGS.sample_test:]
 
     # TBD: Maybe download dataset here
 
     # Setup async input queues
     train_features, train_labels = srez_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
-                                                                        image_size=FLAGS.sample_size, axis_undersample=FLAGS.axis_undersample, R_factor=FLAGS.R_factor)
+                                                                        image_size=FLAGS.sample_size, 
+                                                                        # undersampling
+                                                                        axis_undersample=FLAGS.axis_undersample, 
+                                                                        r_factor=FLAGS.R_factor,
+                                                                        r_bias=FLAGS.R_bias
+                                                                        )
     test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
-                                                                        image_size=FLAGS.sample_size, axis_undersample=FLAGS.axis_undersample, R_factor=FLAGS.R_factor)
+                                                                        image_size=FLAGS.sample_size, 
+                                                                        # undersampling
+                                                                        axis_undersample=FLAGS.axis_undersample, 
+                                                                        r_factor=FLAGS.R_factor,
+                                                                        r_bias=FLAGS.R_bias)
     
     # sample size
     num_sample_train = len(train_filenames_input)
