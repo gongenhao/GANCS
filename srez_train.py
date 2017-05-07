@@ -9,7 +9,8 @@ from scipy.io import savemat
 FLAGS = tf.app.flags.FLAGS
 OUTPUT_TRAIN_SAMPLES = 0
 
-def _summarize_progress(train_data, feature, label, gene_output, batch, suffix, max_samples=8, gene_param=None):
+def _summarize_progress(train_data, feature, label, gene_output, 
+                        batch, suffix, max_samples=8, gene_param=None):
     td = train_data
 
     size = [label.shape[1], label.shape[2]]
@@ -112,9 +113,9 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
     batch = 0
 
     # batch info    
-    size_batch = FLAGS.batch_size
-    num_batch_train = num_sample_train / size_batch
-    num_batch_test = num_sample_test / size_batch            
+    batch_size = FLAGS.batch_size
+    num_batch_train = num_sample_train / batch_size
+    num_batch_test = num_sample_test / batch_size            
 
     # learning rate
     assert FLAGS.learning_rate_half_life % 10 == 0
@@ -128,8 +129,8 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
         list_test_features.append(test_feature)
         list_test_labels.append(test_label)
     print('prepare {0} test feature batches'.format(num_batch_test))
-    print([type(x) for x in list_test_features])
-    print([type(x) for x in list_test_labels])
+    # print([type(x) for x in list_test_features])
+    # print([type(x) for x in list_test_labels])
 
     while not done:
         batch += 1
@@ -186,9 +187,10 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 print('disc_layers',[x.shape for x in disc_layers])
                 # gene_layers=gene_layers[:3]+gene_layers[3:-3][::3]+gene_layers[-3:]
                 # disc_layers=disc_layers[:3]+disc_layers[3:-3][::3]+disc_layers[-3:]
-                _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test{0}'.format(index_batch_test), 
-                                    gene_param={'gene_layers':[x.tolist() for x in gene_layers], 
-                                                'disc_layers':[x.tolist() for x in disc_layers]})
+                _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test{0}'.format(index_batch_test),                                     
+                                    max_samples = batch_size,
+                                    gene_param = {'gene_layers':[x.tolist() for x in gene_layers], 
+                                                  'disc_layers':[x.tolist() for x in disc_layers]})
                 # try to reduce mem
                 gene_output = None
                 gene_layers = None
