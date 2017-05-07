@@ -499,7 +499,7 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
                 # since it is directly connected to the skip_layer
                 input = layers[-1]
             else:
-                input = tf.concat([layers[-1], layers[skip_layer]], axis=3)
+                input = tf.concat(axis=3, values=[layer[-1], layers[skip_layer]]) # change the order of value and axisn, axis=3)
 
             rectified = tf.nn.relu(input)
             # [batch, in_height, in_width, in_channels] => [batch, in_height*2, in_width*2, out_channels]
@@ -516,7 +516,7 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
         print(x)
 
     with tf.variable_scope("decoder_1"):
-        input = tf.concat([layers[-1], layers[0]], axis=3)
+        input = tf.concat(axis=3, values=[layer[-1], layers[0]]) #, axis=3)
         rectified = tf.nn.relu(input)
         output = deconv(rectified, channels)
         output = tf.tanh(output)
@@ -537,7 +537,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     # Upside-down all-convolutional resnet
 
     mapsize = 3
-    res_units  = [64, 32, 16]#[256, 128, 96]
+    res_units  = [128, 64, 32] #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
 
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated

@@ -120,7 +120,7 @@ def getMask(size=[128,128], porder = 5.0, bias = 0.1, seed = 0, axis_undersample
     return mask, R_factor
 
 def genMask(size=[128,128], r_factor=5, axis_undersample=1):
-    bias = 10**(-R_factor/5.0) #empirical value
+    bias = 10**(-r_factor/5.0) #empirical value
     porder = r_factor/2
     _, R_tmp = getMask(size=size, porder=porder, bias=bias, mute = 1)
     while R_tmp < r_factor and porder<100:

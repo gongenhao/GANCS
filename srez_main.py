@@ -12,7 +12,7 @@ python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom 
 
 
 """
-import srez_demo
+#import srez_demo
 import srez_input
 import srez_model
 import srez_train
@@ -51,22 +51,22 @@ tf.app.flags.DEFINE_float('epsilon', 1e-8,
                           "Fuzz term to avoid numerical instability")
 
 tf.app.flags.DEFINE_string('run', 'demo',
-                            "Which operation to run. [demo|train]")
+                            "Which operation to run. [demo|train]")   #demo
 
 tf.app.flags.DEFINE_float('gene_log_factor', 0,
                           "Multiplier for generator fool loss term, weighting log-loss vs LS loss")
 
-tf.app.flags.DEFINE_float('gene_dc_factor', 0.01,
+tf.app.flags.DEFINE_float('gene_dc_factor', 0.1,
                           "Multiplier for generator data-consistency L2 loss term for data consistency, weighting Data-Consistency with GD-loss for GAN-loss")
 
-tf.app.flags.DEFINE_float('gene_mse_factor', .001,
+tf.app.flags.DEFINE_float('gene_mse_factor', 0.0001,
                           "Multiplier for generator MSE loss for regression accuracy, weighting MSE VS GAN-loss")
 
 tf.app.flags.DEFINE_float('learning_beta1', 0.5,
                           "Beta1 parameter used for AdamOptimizer")
 
-tf.app.flags.DEFINE_float('learning_rate_start', 0.00020,
-                          "Starting learning rate used for AdamOptimizer")
+tf.app.flags.DEFINE_float('learning_rate_start', 0.000050,
+                          "Starting learning rate used for AdamOptimizer")  #0.000020
 
 tf.app.flags.DEFINE_integer('learning_rate_half_life', 1000,
                             "Number of batches until learning rate is halved")
@@ -97,6 +97,9 @@ tf.app.flags.DEFINE_integer('train_time', 20,
 
 tf.app.flags.DEFINE_integer('axis_undersample', 1,
                             "which axis to undersample")
+
+tf.app.flags.DEFINE_integer('R_factor', 4,
+                            "undersampling factor")
 
 
 def mkdirp(path):
@@ -231,9 +234,9 @@ def _train():
 
     # Setup async input queues
     train_features, train_labels = srez_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
-                                                                        image_size=FLAGS.sample_size, axis_undersample=FLAGS.axis_undersample)
+                                                                        image_size=FLAGS.sample_size, axis_undersample=FLAGS.axis_undersample, R_factor=FLAGS.R_factor)
     test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
-                                                                        image_size=FLAGS.sample_size, axis_undersample=FLAGS.axis_undersample)
+                                                                        image_size=FLAGS.sample_size, axis_undersample=FLAGS.axis_undersample, R_factor=FLAGS.R_factor)
     
     # sample size
     num_sample_train = len(train_filenames_input)

@@ -34,7 +34,7 @@ def _summarize_progress(train_data, feature, label, gene_output, batch, suffix, 
     # concate for visualize image
     image   = tf.concat(axis=2, values=[complex_zpad, mag_zpad, mag_output, mag_gt])
     image = image[0:max_samples,:,:,:]
-    image = tf.concat(axis=0, values=[image[i,:,:,:] for i in range(max_samples)])
+    image = tf.concat(axis=0, values=[image[i,:,:,:] for i in range(int(max_samples))])
     image = td.sess.run(image)
     print('save to image size {0} type {1}', image.shape, type(image))
     
@@ -123,7 +123,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
     # update: get all test features
     list_test_features = []
     list_test_labels = []
-    for batch_test in xrange(num_batch_test):
+    for batch_test in range(int(num_batch_test)):
         test_feature, test_label = td.sess.run([td.test_features, td.test_labels])
         list_test_features.append(test_feature)
         list_test_labels.append(test_label)
@@ -167,7 +167,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
         # export test batches
         if batch % FLAGS.summary_period == 0:
             # loop different test batch
-            for index_batch_test in xrange(num_batch_test):
+            for index_batch_test in range(int(num_batch_test)):
                 # get test feature
                 test_feature = list_test_features[index_batch_test]
                 test_label = list_test_labels[index_batch_test]
