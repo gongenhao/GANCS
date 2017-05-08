@@ -55,7 +55,7 @@ Multiple results are exported while traning
 `python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom --batch_size 8 --run train --summary_period 123 --sample_size 256 --train_time 10  --train_dir train_save_all --R_factor 4 --R_alpha 3`              
 
 (currently working on t2 for DCE)
-python srez_main.py --run train --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE --sample_size 200 --sample_size_y 100 --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat --batch_size 4  --summary_period 125 --sample_test 32 --sample_train 10000 --train_time 200  --train_dir train_DCE_test 
+`python srez_main.py --run train --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE --sample_size 200 --sample_size_y 100 --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat --batch_size 4  --summary_period 125 --sample_test 32 --sample_train 10000 --train_time 200  --train_dir train_DCE_test `
 
 ## References
 https://github.com/david-gpu/srez
