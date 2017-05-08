@@ -11,9 +11,12 @@ import h5py
 from PIL import Image
 
 # dir
-dir_data_DCE = '/Users/enhao/Documents/Research/MRI/GANCS/data_MRI/processed_data'
-dir_mask_DCE = '/Users/enhao/Documents/Research/MRI/GANCS/data_MRI/sampling_pattern/'
-dir_image_DCE='/Users/enhao/Documents/Research/MRI/GANCS/data_MRI/generated_slices_jpg'
+# dir_data_DCE = '/Users/enhao/Documents/Research/MRI/GANCS/data_MRI/processed_data'
+# dir_mask_DCE = '/Users/enhao/Documents/Research/MRI/GANCS/data_MRI/sampling_pattern/'
+# dir_image_DCE='/home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE'
+dir_data_DCE = '/mnt/raid2/morteza/abdominal_DCE_processed/processed_data'
+dir_mask_DCE = '/mnt/raid2/morteza/abdominal_DCE_processed/sampling_pattern'
+dir_image_DCE='/home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE'
 
 # import data
 list_filename_data = [x for x in os.listdir(dir_data_DCE) if x.endswith('.mat')]
@@ -31,7 +34,7 @@ indexes_slice=xrange(0,151)
 for filename_data in list_filename_data:
     # load data
     filepath_data = os.path.join(dir_data_DCE, filename_data)
-    content_mat=loadmat(filepath_data)
+    content_mat = sio.loadmat(filepath_data)
     key_mat=[x for x in content_mat.keys() if not x.startswith('_')]
     try:
         data=content_mat[key_mat[0]]
