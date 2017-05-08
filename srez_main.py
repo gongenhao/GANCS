@@ -17,6 +17,15 @@ python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom2
                     --R_factor 8 \
                     --R_bias 0.1               
 
+#DCE
+python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
+                    --batch_size 4 --run train --summary_period 125 \
+                    --sample_size 200 \
+                    --sample_size_y 100 \
+                    --train_time 10  \
+                    --sample_test 32 --sample_train 1000 \
+                    --train_dir tmp_specify_train  \
+                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat
 
 """
 #import srez_demo
@@ -31,6 +40,8 @@ import numpy.random
 
 import tensorflow as tf
 import shutil, os, errno # utils handling file manipulation
+
+from scipy import io as sio #.mat I/O
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -84,6 +95,9 @@ tf.app.flags.DEFINE_bool('log_device_placement', False,
 tf.app.flags.DEFINE_integer('sample_size', 128,
                             "Image sample size in pixels. Range [64,128]")
 
+tf.app.flags.DEFINE_integer('sample_size_y', -1,
+                            "Image sample size in pixels. by default the sample as sample_size")
+
 tf.app.flags.DEFINE_integer('summary_period', 500,
                             "Number of batches between summary data dumps")
 
@@ -114,7 +128,7 @@ tf.app.flags.DEFINE_float('R_factor', 4,
 tf.app.flags.DEFINE_float('R_alpha', 1,
                             "desired variable density parameter x^alpha")
 
-tf.app.flags.DEFINE_string('path_undersampling', '',
+tf.app.flags.DEFINE_string('sampling_pattern', '',
                             "specifed file path for undersampling")
 
 
@@ -252,22 +266,40 @@ def _train():
 
     # TBD: Maybe download dataset here
 
+    # get undersample mask
+    from scipy import io as sio
+    try:
+        content_mask = sio.loadmat(FLAGS.sampling_pattern)
+        key_mask = [x for x in content_mask.keys() if not x.startswith('_')]
+        mask = content_mask[key_mask[0]]
+    except:
+        mask = None
+
+    # image_size
+    if FLAGS.sample_size_y>0:
+        image_size = [FLAGS.sample_size, FLAGS.sample_size_y]
+    else:
+        image_size = [FLAGS.sample_size, FLAGS.sample_size]
+
     # Setup async input queues
     train_features, train_labels = srez_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
-                                                                        image_size=FLAGS.sample_size, 
+                                                                        image_size=image_size, 
                                                                         # undersampling
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
-                                                                        r_alpha=FLAGS.R_alpha
+                                                                        r_alpha=FLAGS.R_alpha,
+                                                                        sampling_mask=mask
                                                                         )
     test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
-                                                                        image_size=FLAGS.sample_size, 
+                                                                        image_size=image_size, 
                                                                         # undersampling
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
-                                                                        r_alpha=FLAGS.R_alpha)
+                                                                        r_alpha=FLAGS.R_alpha,
+                                                                        sampling_mask=mask
+                                                                        )
     
-    # sample size
+    # sample train and test
     num_sample_train = len(train_filenames_input)
     num_sample_test = len(test_filenames_input)
     print('train on {0} samples and test on {1} samples'.format(num_sample_train, num_sample_test))
