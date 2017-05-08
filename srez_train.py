@@ -7,6 +7,7 @@ import json
 from scipy.io import savemat
 
 FLAGS = tf.app.flags.FLAGS
+# FLAGS.sample_size_y = FLAGS.sample_size if FLAGS.sample_size_y<0
 OUTPUT_TRAIN_SAMPLES = 0
 
 def _summarize_progress(train_data, feature, label, gene_output, 
@@ -22,7 +23,7 @@ def _summarize_progress(train_data, feature, label, gene_output,
     # zpad magnitude
     mag_zpad = tf.sqrt(complex_zpad[:,:,:,0]**2+complex_zpad[:,:,:,1]**2)
     mag_zpad = tf.maximum(tf.minimum(mag_zpad, 1.0), 0.0)
-    mag_zpad = tf.reshape(mag_zpad, [FLAGS.batch_size,FLAGS.sample_size,FLAGS.sample_size,1])
+    mag_zpad = tf.reshape(mag_zpad, [FLAGS.batch_size,size[0],size[1],1])
     mag_zpad = tf.concat(axis=3, values=[mag_zpad, mag_zpad])
     
     # output magnitude
