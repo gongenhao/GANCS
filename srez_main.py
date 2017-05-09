@@ -23,11 +23,12 @@ python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom2
 python srez_main.py --run train \
                     --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
                     --sample_size 200 --sample_size_y 100 \
-                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \                    
-                    --batch_size 4  --summary_period 125 \
-                    --sample_test 32 --sample_train 10000 \
-                    --train_time 200  \
-                    --train_dir train_DCE_test 
+                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \
+                    --batch_size 8  --summary_period 125 \
+                    --sample_test 32 --sample_train 20000 \
+                    --train_time 3  \
+                    --train_dir train_DCE_0508_R4 \
+                    --gene_mse_factor 0.1                     
 
 """
 #import srez_demo
@@ -193,7 +194,7 @@ def get_filenames(dir_file='', shuffle_filename=False):
 
 
 
-def setup_tensorflow(gpu_memory_fraction=0.6):
+def setup_tensorflow(gpu_memory_fraction=0.4):
     # Create session
     config = tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)
     config.gpu_options.per_process_gpu_memory_fraction = gpu_memory_fraction
@@ -273,7 +274,7 @@ def _train():
     if FLAGS.sample_train > 0:
         index_sample_train_selected = random.sample(range(len(train_filenames_input)), FLAGS.sample_train)
         train_filenames_input = [train_filenames_input[x] for x in index_sample_train_selected]
-        train_filenames_output = [train_filenames_input[x] for x in index_sample_train_selected]
+        train_filenames_output = [train_filenames_output[x] for x in index_sample_train_selected]
         print('randomly sampled {0} from {1} train samples'.format(len(train_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
 
     # get undersample mask
@@ -292,7 +293,7 @@ def _train():
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
                                                                         r_alpha=FLAGS.R_alpha,
-                                                                        r_seed=FLAGS.R_seed
+                                                                        r_seed=FLAGS.R_seed,
                                                                         sampling_mask=mask
                                                                         )
     test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
