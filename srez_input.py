@@ -8,7 +8,8 @@ def generate_mask_alpha(size=[128,128], r_factor_designed=5.0, r_alpha=3, axis_u
                         acs=3, seed=0, mute=0):
     # init
     mask = np.zeros(size)
-    np.random.seed(seed)
+    if seed>=0:
+        np.random.seed(seed)
     # get samples
     num_phase_encode = size[axis_undersample]
     num_phase_sampled = int(np.floor(num_phase_encode/r_factor_designed))
@@ -55,7 +56,9 @@ def generate_mask_mat(mask=[], mute=0):
 
 
 def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, 
-                             axis_undersample=1, capacity_factor=3, r_factor=4, r_alpha=0, sampling_mask=None):
+                             axis_undersample=1, capacity_factor=3, 
+                             r_factor=4, r_alpha=0, r_seed=0,
+                             sampling_mask=None):
 
     # image size
     if image_size is None:
@@ -70,7 +73,9 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
         DEFAULT_MASK, _ = generate_mask_alpha(image_size, # kspace size
                                               r_factor_designed=r_factor, 
                                               r_alpha=r_alpha, 
-                                              axis_undersample=axis_undersample)
+                                              seed=r_seed,
+                                              axis_undersample=axis_undersample
+                                              )
     else:
         # get input mask
         DEFAULT_MASK, _ = generate_mask_mat(sampling_mask)
