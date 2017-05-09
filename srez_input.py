@@ -37,7 +37,7 @@ def generate_mask_alpha(size=[128,128], r_factor_designed=5.0, r_alpha=3, axis_u
     # compute reduction
     r_factor = len(mask.flatten())/sum(mask.flatten())
     if not mute:
-        print('gen mask for R-factor={0:.4f}'.format(r_factor))
+        print('gen mask size of {1} for R-factor={0:.4f}'.format(r_factor, mask.shape))
         print(num_phase_encode, num_phase_sampled, np.where(mask[0,:]))
 
     return mask, r_factor
@@ -57,6 +57,14 @@ def generate_mask_mat(mask=[], mute=0):
 def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, 
                              axis_undersample=1, capacity_factor=3, r_factor=4, r_alpha=0, sampling_mask=None):
 
+    # image size
+    if image_size is None:
+        # image_size
+        if FLAGS.sample_size_y>0:
+            image_size = [FLAGS.sample_size, FLAGS.sample_size_y]
+        else:
+            image_size = [FLAGS.sample_size, FLAGS.sample_size]
+
     # generate default mask
     if sampling_mask is None:
         DEFAULT_MASK, _ = generate_mask_alpha(image_size, # kspace size
@@ -70,14 +78,6 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     # convert to complex tf tensor
     DEFAULT_MAKS_TF = tf.cast(tf.constant(DEFAULT_MASK), tf.float32)
     DEFAULT_MAKS_TF_c = tf.cast(DEFAULT_MAKS_TF, tf.complex64)
-
-    # image size
-    if image_size is None:
-        # image_size
-        if FLAGS.sample_size_y>0:
-            image_size = [FLAGS.sample_size, FLAGS.sample_size_y]
-        else:
-            image_size = [FLAGS.sample_size, FLAGS.sample_size]
 
     
     # Read each JPEG file

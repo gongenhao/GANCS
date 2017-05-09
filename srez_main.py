@@ -20,11 +20,10 @@ python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom2
 #DCE
 python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
                     --batch_size 4 --run train --summary_period 125 \
-                    --sample_size 200 \
-                    --sample_size_y 100 \
-                    --train_time 10  \
-                    --sample_test 32 --sample_train 1000 \
-                    --train_dir tmp_specify_train  \
+                    --sample_size 200 --sample_size_y 100 \
+                    --train_time 200  \
+                    --sample_test 32 --sample_train 10000 \
+                    --train_dir train_DCE_test  \
                     --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat
 
 """
