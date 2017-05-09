@@ -61,7 +61,8 @@ def _summarize_progress(train_data, feature, label, gene_output,
         gene_param['label'] = label.tolist()
         gene_param['gene_output'] = gene_output.tolist()
         # add input arguments
-        gene_param['FLAGS'] = FLAGS
+        # print(FLAGS.__dict__['__flags'])
+        gene_param['FLAGS'] = FLAGS.__dict__['__flags']
 
         # save json
         filename = 'batch%06d_%s.json' % (batch, suffix)
