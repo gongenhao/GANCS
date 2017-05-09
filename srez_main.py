@@ -249,8 +249,13 @@ def _train():
     # Setup global tensorflow state
     sess, summary_writer = setup_tensorflow()
 
+    # image_size
+    if FLAGS.sample_size_y>0:
+        image_size = [FLAGS.sample_size, FLAGS.sample_size_y]
+    else:
+        image_size = [FLAGS.sample_size, FLAGS.sample_size]
+
     # Prepare directories
-    # all_filenames = 
     prepare_dirs(delete_train_dir=True, shuffle_filename=False)
     filenames_input = get_filenames(dir_file=FLAGS.dataset_input, shuffle_filename=False)
     # if not specify use the same as input
@@ -259,18 +264,17 @@ def _train():
     filenames_output = get_filenames(dir_file=FLAGS.dataset_output, shuffle_filename=False)
 
     # Separate training and test sets
-    if FLAGS.sample_train > 0:
-        train_filenames_input = filenames_input[:FLAGS.sample_train]    
-        train_filenames_output = filenames_output[:FLAGS.sample_train]        
-    else:
-        train_filenames_input = filenames_input[:-FLAGS.sample_test]    
-        train_filenames_output = filenames_output[:-FLAGS.sample_test]        
-    
-    # test    
+    train_filenames_input = filenames_input[:-FLAGS.sample_test]    
+    train_filenames_output = filenames_output[:-FLAGS.sample_test]            
     test_filenames_input  = filenames_input[-FLAGS.sample_test:]
     test_filenames_output  = filenames_output[-FLAGS.sample_test:]
 
-    # TBD: Maybe download dataset here
+    # random sample for train
+    if FLAGS.sample_train > 0:
+        index_sample_train_selected = random.sample(range(len(train_filenames_input)), FLAGS.sample_train)
+        train_filenames_input = [train_filenames_input[x] for x in index_sample_train_selected]
+        train_filenames_output = [train_filenames_input[x] for x in index_sample_train_selected]
+        print('randomly sampled {0} from {1} train samples'.format(len(train_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
 
     # get undersample mask
     from scipy import io as sio
@@ -280,12 +284,6 @@ def _train():
         mask = content_mask[key_mask[0]]
     except:
         mask = None
-
-    # image_size
-    if FLAGS.sample_size_y>0:
-        image_size = [FLAGS.sample_size, FLAGS.sample_size_y]
-    else:
-        image_size = [FLAGS.sample_size, FLAGS.sample_size]
 
     # Setup async input queues
     train_features, train_labels = srez_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
