@@ -12,6 +12,7 @@ OUTPUT_TRAIN_SAMPLES = 0
 
 def _summarize_progress(train_data, feature, label, gene_output, 
                         batch, suffix, max_samples=8, gene_param=None):
+    
     td = train_data
 
     size = [label.shape[1], label.shape[2]]
@@ -59,7 +60,9 @@ def _summarize_progress(train_data, feature, label, gene_output,
         gene_param['feature'] = feature.tolist()
         gene_param['label'] = label.tolist()
         gene_param['gene_output'] = gene_output.tolist()
-        
+        # add input arguments
+        gene_param['FLAGS'] = FLAGS
+
         # save json
         filename = 'batch%06d_%s.json' % (batch, suffix)
         filename = os.path.join(FLAGS.train_dir, filename)
