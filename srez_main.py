@@ -15,16 +15,19 @@ python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom2
                     --sample_test 32 --sample_train 1000 \
                     --train_dir tmp_specify_train  \
                     --R_factor 8 \
-                    --R_bias 0.1               
+                    --R_alpha 3 \
+                    % R_seed<0 means non-fixed random seed
+                    --R_seed -1 
 
 #DCE
-python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
-                    --batch_size 4 --run train --summary_period 125 \
+python srez_main.py --run train \
+                    --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
                     --sample_size 200 --sample_size_y 100 \
-                    --train_time 200  \
+                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \                    
+                    --batch_size 4  --summary_period 125 \
                     --sample_test 32 --sample_train 10000 \
-                    --train_dir train_DCE_test  \
-                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat
+                    --train_time 200  \
+                    --train_dir train_DCE_test 
 
 """
 #import srez_demo
@@ -127,8 +130,12 @@ tf.app.flags.DEFINE_float('R_factor', 4,
 tf.app.flags.DEFINE_float('R_alpha', 1,
                             "desired variable density parameter x^alpha")
 
+tf.app.flags.DEFINE_integer('R_seed', 0,
+                            "specifed sampling seed to generate undersampling, -1 for randomized sampling")
+
 tf.app.flags.DEFINE_string('sampling_pattern', '',
                             "specifed file path for undersampling")
+
 
 
 def mkdirp(path):
@@ -287,6 +294,7 @@ def _train():
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
                                                                         r_alpha=FLAGS.R_alpha,
+                                                                        r_seed=FLAGS.R_seed
                                                                         sampling_mask=mask
                                                                         )
     test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
@@ -295,6 +303,7 @@ def _train():
                                                                         axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
                                                                         r_alpha=FLAGS.R_alpha,
+                                                                        r_seed=FLAGS.R_seed,
                                                                         sampling_mask=mask
                                                                         )
     
