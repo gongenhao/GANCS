@@ -42,7 +42,8 @@ python srez_main.py --run train \
                     --train_time 300  \
                     --train_dir train_DCE_0509_R4_MSE10 \
                     --gene_mse_factor 1.0    \
-                    --gpu_memory_fraction 0.4                     
+                    --gpu_memory_fraction 0.4 \
+                    --hybrid_disc True                    
 
 
 """
@@ -170,6 +171,8 @@ tf.app.flags.DEFINE_string('sampling_pattern', '',
 tf.app.flags.DEFINE_float('gpu_memory_fraction', 0.4,
                             "specified the max gpu fraction used per device")
 
+tf.app.flags.DEFINE_integer('hybrid_disc', 0,
+                            "whether/level to augment discriminator input to image+kspace hybrid space.")
 
 
 def mkdirp(path):
