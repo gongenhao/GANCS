@@ -25,10 +25,25 @@ python srez_main.py --run train \
                     --sample_size 200 --sample_size_y 100 \
                     --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \
                     --batch_size 8  --summary_period 125 \
-                    --sample_test 32 --sample_train 20000 \
-                    --train_time 3  \
-                    --train_dir train_DCE_0508_R4 \
-                    --gene_mse_factor 0.1                     
+                    --sample_test 32 --sample_train 30000 \
+                    --train_time 300  \
+                    --train_dir train_DCE_0508_R4_MSE01 \
+                    --gene_mse_factor 0.1    \
+                    --gpu_memory_fraction 0.5
+
+# with sub sampling
+python srez_main.py --run train \
+                    --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
+                    --sample_size 200 --sample_size_y 100 \
+                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \
+                    --batch_size 8  --summary_period  1250 \
+                    --sample_test 604 --sample_train -1 \
+                    --subsample_test 64 --subsample_train 30000 \
+                    --train_time 300  \
+                    --train_dir train_DCE_0509_R4_MSE10 \
+                    --gene_mse_factor 1.0    \
+                    --gpu_memory_fraction 0.4                     
+
 
 """
 #import srez_demo
@@ -107,6 +122,15 @@ tf.app.flags.DEFINE_integer('summary_period', 500,
 tf.app.flags.DEFINE_integer('summary_train_period', 50,
                             "Number of batches between train data dumps")
 
+tf.app.flags.DEFINE_bool('permutation_split', False,
+                         "Whether to randomly permutate order before split train and test.")
+
+tf.app.flags.DEFINE_bool('permutation_train', True,
+                         "Whether to randomly permutate order for training sub-samples.")
+
+tf.app.flags.DEFINE_bool('permutation_test', False,
+                         "Whether to randomly permutate order for testing sub-samples.")
+
 tf.app.flags.DEFINE_integer('random_seed', 0,
                             "Seed used to initialize rng.")
 
@@ -115,6 +139,12 @@ tf.app.flags.DEFINE_integer('sample_test', 16,
 
 tf.app.flags.DEFINE_integer('sample_train', -1,
                             "Number of features to use for train. default value is -1 for use all samples except testing samples")
+
+tf.app.flags.DEFINE_integer('subsample_test', -1,
+                            "Number of test sample to uniform sample. default value is -1 for using all test samples")
+
+tf.app.flags.DEFINE_integer('subsample_train', -1,
+                            "Number of train sample to uniform sample. default value is -1 for using all train samples")
                             
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            "Output folder where training logs are dumped.")
@@ -203,7 +233,7 @@ def setup_tensorflow(gpu_memory_fraction=0.4):
     config.gpu_options.per_process_gpu_memory_fraction = min(gpu_memory_fraction, FLAGS.gpu_memory_fraction)
     sess = tf.Session(config=config)
     print('TF session setup for gpu usage cap of {0}'.format(config.gpu_options.per_process_gpu_memory_fraction))
-    
+
     # Initialize rng with a deterministic seed
     with sess.graph.as_default():
         tf.set_random_seed(FLAGS.random_seed)
@@ -268,18 +298,40 @@ def _train():
         FLAGS.dataset_output = FLAGS.dataset_input
     filenames_output = get_filenames(dir_file=FLAGS.dataset_output, shuffle_filename=False)
 
+    # check input and output sample number matches
+    assert(len(filenames_input)==len(filenames_output))
+    num_filename_all = len(filenames_input)
+
+    # Permutate train/test split
+    if FLAGS.permutation_split:
+        index_permutation_split = random.sample(num_filename_all,num_filename_all)
+        filenames_input = [filenames_input[x] for x in index_permutation_split]
+        filename_output = [filename_output[x] for x in index_permutation_split]
+
+
     # Separate training and test sets
     train_filenames_input = filenames_input[:-FLAGS.sample_test]    
     train_filenames_output = filenames_output[:-FLAGS.sample_test]            
     test_filenames_input  = filenames_input[-FLAGS.sample_test:]
     test_filenames_output  = filenames_output[-FLAGS.sample_test:]
 
-    # random sample for train
-    if FLAGS.sample_train > 0:
-        index_sample_train_selected = random.sample(range(len(train_filenames_input)), FLAGS.sample_train)
+    # randomly subsample for train
+    if FLAGS.subsample_train > 0:
+        index_sample_train_selected = random.sample(range(len(train_filenames_input)), FLAGS.subsample_train)
+        if not FLAGS.permutation_train:
+            index_sample_train_selected = sorted(index_sample_train_selected)
         train_filenames_input = [train_filenames_input[x] for x in index_sample_train_selected]
         train_filenames_output = [train_filenames_output[x] for x in index_sample_train_selected]
         print('randomly sampled {0} from {1} train samples'.format(len(train_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
+
+    # randomly sub-sample for test    
+    if FLAGS.subsample_test > 0:
+        index_sample_test_selected = random.sample(range(len(test_filenames_input)), FLAGS.subsample_test)
+        if not FLAGS.permutation_test:
+            index_sample_test_selected = sorted(index_sample_test_selected)
+        test_filenames_input = [test_filenames_input[x] for x in index_sample_test_selected]
+        test_filenames_output = [test_filenames_output[x] for x in index_sample_test_selected]
+        print('randomly sampled {0} from {1} test samples'.format(len(test_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
 
     # get undersample mask
     from scipy import io as sio
