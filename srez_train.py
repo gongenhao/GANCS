@@ -157,10 +157,11 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
         if batch % 10 == 0:
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
-            err_log = 'Progress[{0:3d}%], ETA[{1:4d}m], Batch [{2:4d}], G_Loss[{3:3.3f}], G_DC_Loss[{4:3.3f}], G_LS_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(
+            err_log = 'Progress[{0:3d}%], ETA[{1:4d}m], Batch [{2:4d}], G_Loss[{3}], G_DC_Loss[{4:3.3f}], G_LS_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(
                     int(100*elapsed/FLAGS.train_time), FLAGS.train_time - elapsed, batch, 
-                    gen_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
+                    gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
             print(err_log)
+            err_loss = [batch, gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss]
 
             # Finished?            
             current_progress = elapsed / FLAGS.train_time
@@ -195,7 +196,8 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 # disc_layers=disc_layers[:3]+disc_layers[3:-3][::3]+disc_layers[-3:]
                 _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test{0}'.format(index_batch_test),                                     
                                     max_samples = batch_size,
-                                    gene_param = {'err_train':err_log,
+                                    gene_param = {'train_log':err_log,
+                                                  'train_loss':err_loss,
                                                   'gene_layers':[x.tolist() for x in gene_layers], 
                                                   'disc_layers':[x.tolist() for x in disc_layers]})
                 # try to reduce mem
