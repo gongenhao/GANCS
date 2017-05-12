@@ -56,7 +56,7 @@ def generate_mask_mat(mask=[], mute=0):
 
 
 def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, 
-                             axis_undersample=1, capacity_factor=3, 
+                             axis_undersample=1, capacity_factor=1, 
                              r_factor=4, r_alpha=0, r_seed=0,
                              sampling_mask=None, num_threads=1):
 
