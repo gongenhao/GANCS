@@ -161,7 +161,8 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                     int(100*elapsed/FLAGS.train_time), FLAGS.train_time - elapsed, batch, 
                     gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
             print(err_log)
-            err_loss = [batch, gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss]
+            err_loss = [int(batch), float(gene_loss), float(gene_dc_loss), 
+                        float(gene_ls_loss), float(disc_real_loss), float(disc_fake_loss)]
 
             # Finished?            
             current_progress = elapsed / FLAGS.train_time
