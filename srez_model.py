@@ -333,7 +333,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=3, hybrid
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
 
     # augment data to hybrid domain = image+kspace
-    if hybrid_disc:
+    if hybrid_disc>0:
         disc_size = tf.shape(disc_input)#disc_input.get_shape()
         # print(disc_size)        
         disc_kspace = Fourier(disc_input, separate_complex=False)
@@ -345,10 +345,14 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=3, hybrid
         disc_kspace_imag = tf.reshape(disc_kspace_imag, [disc_size[0],disc_size[1],disc_size[2],1])
         disc_kspace_mag = tf.cast(tf.abs(disc_kspace), tf.float32)
         # print(disc_kspace_mag)
+        disc_kspace_mag = tf.log(disc_kspace_mag)
         disc_kspace_mag = tf.reshape(disc_kspace_mag, [disc_size[0],disc_size[1],disc_size[2],1])
-        disc_hybird = tf.concat(axis=3, values=[disc_input*2-1, disc_kspace_imag, disc_kspace_real, disc_kspace_imag])
+        if hybrid_disc == 1:
+            disc_hybird = tf.concat(axis = 3, values = [disc_input * 2-1, disc_kspace_imag])
+        else:
+            disc_hybird = tf.concat(axis = 3, values = [disc_input * 2-1, disc_kspace_imag, disc_kspace_real, disc_kspace_imag])
     else:
-        disc_hybird = 2*disc_input - 1
+        disc_hybird = 2 * disc_input - 1
     print(hybrid_disc, 'discriminator input dimensions: {0}'.format(disc_hybird.get_shape()))
     model = Model('DIS', disc_hybird)        
 

@@ -55,7 +55,7 @@ def _summarize_progress(train_data, feature, label, gene_output,
     # save layers and var_list
     if gene_param is not None:
         #add feature 
-        print('save input and output:',
+        print('dimension for input, ref, output:',
               feature.shape, label.shape, gene_output.shape)
         gene_param['feature'] = feature.tolist()
         gene_param['label'] = label.tolist()

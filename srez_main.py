@@ -36,10 +36,10 @@ python srez_main.py --run train \
                     --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
                     --sample_size 200 --sample_size_y 100 \
                     --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \
-                    --batch_size 8  --summary_period  1250 \
+                    --batch_size 8  --summary_period  100 \
                     --sample_test 604 --sample_train -1 \
                     --subsample_test 64 --subsample_train 30000 \
-                    --train_time 300  \
+                    --train_time 3  \
                     --train_dir train_DCE_0509_R4_MSE10 \
                     --gene_mse_factor 1.0    \
                     --gpu_memory_fraction 0.4 \
@@ -228,6 +228,8 @@ def get_filenames(dir_file='', shuffle_filename=False):
     filenames = sorted(filenames)
     if shuffle_filename:
         random.shuffle(filenames)
+    else:
+        filenames = sorted(filenames)
     filenames = [os.path.join(dir_file, f) for f in filenames if f.endswith('.jpg')]
     return filenames
 
@@ -310,16 +312,17 @@ def _train():
 
     # Permutate train/test split
     if FLAGS.permutation_split:
-        index_permutation_split = random.sample(num_filename_all,num_filename_all)
+        index_permutation_split = random.sample(num_filename_all, num_filename_all)
         filenames_input = [filenames_input[x] for x in index_permutation_split]
-        filename_output = [filename_output[x] for x in index_permutation_split]
-
+        filenames_output = [filenames_output[x] for x in index_permutation_split]
+    print('filenames_input[:20]',filenames_input[:20])
 
     # Separate training and test sets
     train_filenames_input = filenames_input[:-FLAGS.sample_test]    
     train_filenames_output = filenames_output[:-FLAGS.sample_test]            
     test_filenames_input  = filenames_input[-FLAGS.sample_test:]
     test_filenames_output  = filenames_output[-FLAGS.sample_test:]
+    print('test_filenames_input[:20]',test_filenames_input[:20])    
 
     # randomly subsample for train
     if FLAGS.subsample_train > 0:
@@ -338,7 +341,8 @@ def _train():
         test_filenames_input = [test_filenames_input[x] for x in index_sample_test_selected]
         test_filenames_output = [test_filenames_output[x] for x in index_sample_test_selected]
         print('randomly sampled {0} from {1} test samples'.format(len(test_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
-        print(test_filenames_input)
+
+    print('test_filenames_input',test_filenames_input)            
 
     # get undersample mask
     from scipy import io as sio
