@@ -338,6 +338,7 @@ def _train():
         test_filenames_input = [test_filenames_input[x] for x in index_sample_test_selected]
         test_filenames_output = [test_filenames_output[x] for x in index_sample_test_selected]
         print('randomly sampled {0} from {1} test samples'.format(len(test_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
+        print(test_filenames_input)
 
     # get undersample mask
     from scipy import io as sio

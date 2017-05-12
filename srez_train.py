@@ -188,7 +188,12 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
                 
                 ops = [td.gene_moutput, td.gene_mlayers, td.disc_layers]
+                
+                # get timing
+                start_time = time.time()
                 gene_output, gene_layers, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
+                inference_time = time.time() - start_time
+
                 # print('gene_var_list',[x.shape for x in gene_var_list])
                 print('gene_layers',[x.shape for x in gene_layers])
                 # print('disc_var_list',[x.shape for x in disc_var_list])
@@ -199,6 +204,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                                     max_samples = batch_size,
                                     gene_param = {'train_log':err_log,
                                                   'train_loss':err_loss,
+                                                  'inference_time':inference_time,
                                                   'gene_layers':[x.tolist() for x in gene_layers], 
                                                   'disc_layers':[x.tolist() for x in disc_layers]})
                 # try to reduce mem
