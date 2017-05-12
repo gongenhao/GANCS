@@ -43,7 +43,7 @@ python srez_main.py --run train \
                     --train_dir train_DCE_0509_R4_MSE10 \
                     --gene_mse_factor 1.0    \
                     --gpu_memory_fraction 0.4 \
-                    --hybrid_disc True                    
+                    --hybrid_disc 0                    
 
 
 """
@@ -89,6 +89,9 @@ tf.app.flags.DEFINE_float('epsilon', 1e-8,
 
 tf.app.flags.DEFINE_string('run', 'demo',
                             "Which operation to run. [demo|train]")   #demo
+
+tf.app.flags.DEFINE_float('gene_l1l2_factor', 0.5,
+                          "The ratio of l1 l2 factor, MSE=alpha*l1+(1-alpha)*l2")
 
 tf.app.flags.DEFINE_float('gene_log_factor', 0,
                           "Multiplier for generator fool loss term, weighting log-loss vs LS loss")
@@ -381,7 +384,7 @@ def _train():
      disc_real_output, disc_fake_output, disc_var_list, disc_layers] = \
             srez_model.create_model(sess, noisy_train_features, train_labels)
 
-    gene_loss, gene_dc_loss, gene_ls_loss = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
+    gene_loss, gene_dc_loss, gene_ls_loss, gene_mse_loss = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
     disc_real_loss, disc_fake_loss = \
                      srez_model.create_discriminator_loss(disc_real_output, disc_fake_output)
     disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')

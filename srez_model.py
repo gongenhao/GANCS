@@ -321,14 +321,36 @@ class Model:
         scope = self._get_layer_str(layer)
         return tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope)
 
-def _discriminator_model(sess, features, disc_input, layer_output_skip=3):
+def _discriminator_model(sess, features, disc_input, layer_output_skip=3, hybrid_disc=0):
+
+    # update 05092017, hybrid_disc consider whether to use hybrid space for discriminator
+    # to study the kspace distribution/smoothness properties
+
     # Fully convolutional model
     mapsize = 3
     layers  = [8, 16, 32, 64]#[64, 128, 256, 512]
 
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
 
-    model = Model('DIS', 2*disc_input - 1)
+    # augment data to hybrid domain = image+kspace
+    if hybrid_disc:
+        disc_size = tf.shape(disc_input)#disc_input.get_shape()
+        # print(disc_size)        
+        disc_kspace = Fourier(disc_input, separate_complex=False)
+        disc_kspace_real = tf.cast(tf.real(disc_kspace), tf.float32)
+        # print(disc_kspace_real)
+        disc_kspace_real = tf.reshape(disc_kspace_real, [disc_size[0],disc_size[1],disc_size[2],1])
+        disc_kspace_imag = tf.cast(tf.imag(disc_kspace), tf.float32)
+        # print(disc_kspace_imag)        
+        disc_kspace_imag = tf.reshape(disc_kspace_imag, [disc_size[0],disc_size[1],disc_size[2],1])
+        disc_kspace_mag = tf.cast(tf.abs(disc_kspace), tf.float32)
+        # print(disc_kspace_mag)
+        disc_kspace_mag = tf.reshape(disc_kspace_mag, [disc_size[0],disc_size[1],disc_size[2],1])
+        disc_hybird = tf.concat(axis=3, values=[disc_input*2-1, disc_kspace_imag, disc_kspace_real, disc_kspace_imag])
+    else:
+        disc_hybird = 2*disc_input - 1
+    print(hybrid_disc, 'discriminator input dimensions: {0}'.format(disc_hybird.get_shape()))
+    model = Model('DIS', disc_hybird)        
 
     for layer in range(len(layers)):
         nunits = layers[layer]
@@ -615,12 +637,13 @@ def create_model(sess, features, labels, architecture='resnet'):
 
     # TBD: Is there a better way to instance the discriminator?
     with tf.variable_scope('disc') as scope:
+        print('hybrid_disc', FLAGS.hybrid_disc)
         disc_real_output, disc_var_list, disc_layers = \
-                _discriminator_model(sess, features, disc_real_input)
+                _discriminator_model(sess, features, disc_real_input, hybrid_disc=FLAGS.hybrid_disc)
 
         scope.reuse_variables()
             
-        disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output)
+        disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output, hybrid_disc=FLAGS.hybrid_disc)
 
     return [gene_minput,      gene_moutput,
             gene_output,      gene_var_list, gene_layers, gene_mlayers,
@@ -704,8 +727,12 @@ def create_generator_loss(disc_output, gene_output, features, labels):
         
     # data consistency
     gene_dc_loss  = tf.reduce_mean(loss_kspace, name='gene_dc_loss')
+    
     # mse loss
-    gene_mse_loss = tf.reduce_mean(tf.square(gene_output - labels), name='gene_mse_loss')
+    gene_l1_loss  = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
+    gene_l2_loss  = tf.reduce_mean(tf.square(gene_output - labels), name='gene_l2_loss')
+    gene_mse_loss = tf.add(FLAGS.gene_l1l2_factor * gene_l1_loss, 
+                        (1.0 - FLAGS.gene_l1l2_factor) * gene_l2_loss, name='gene_mse_loss')
     
     # generator fool descriminator loss: gan LS or log loss
     gene_fool_loss = tf.add((1.0 - FLAGS.gene_log_factor) * gene_ls_loss,
@@ -719,7 +746,7 @@ def create_generator_loss(disc_output, gene_output, features, labels):
     gene_loss     = tf.add((1.0 - FLAGS.gene_mse_factor) * gene_non_mse_l2, 
                             FLAGS.gene_mse_factor * gene_mse_loss, name='gene_loss')
     
-    return gene_loss, gene_dc_loss, gene_ls_loss
+    return gene_loss, gene_dc_loss, gene_fool_loss, gene_mse_loss
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output):
