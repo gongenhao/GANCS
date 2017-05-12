@@ -58,7 +58,7 @@ def generate_mask_mat(mask=[], mute=0):
 def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, 
                              axis_undersample=1, capacity_factor=3, 
                              r_factor=4, r_alpha=0, r_seed=0,
-                             sampling_mask=None):
+                             sampling_mask=None, num_threads=1):
 
     # image size
     if image_size is None:
@@ -118,10 +118,10 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
 
     # Using asynchronous queues
     features, labels = tf.train.batch([feature, label],
-                                      batch_size=FLAGS.batch_size,
-                                      num_threads=4,
+                                      batch_size = FLAGS.batch_size,
+                                      num_threads = num_threads,
                                       capacity = capacity_factor*FLAGS.batch_size,
-                                      name='labels_and_features')
+                                      name = 'labels_and_features')
 
     tf.train.start_queue_runners(sess=sess)
       
