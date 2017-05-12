@@ -87,7 +87,7 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     
     # Read each JPEG file
     reader_input = tf.WholeFileReader()
-    filename_queue_input = tf.train.string_input_producer(filenames_input)
+    filename_queue_input = tf.train.string_input_producer(filenames_input, shuffle=False)
     key, value_input = reader_input.read(filename_queue_input)
     channels = 3
     image_input = tf.image.decode_jpeg(value_input, channels=channels, name="input_image")
