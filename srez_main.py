@@ -43,7 +43,36 @@ python srez_main.py --run train \
                     --train_dir train_DCE_0509_R4_MSE10 \
                     --gene_mse_factor 1.0    \
                     --gpu_memory_fraction 0.4 \
-                    --hybrid_disc 0                    
+                    --hybrid_disc 0   
+
+# with ssim     
+python srez_main.py --run train \
+                    --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
+                    --sample_size 200 --sample_size_y 100 \
+                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \
+                    --batch_size 8  --summary_period  1250 \
+                    --sample_test 604 --sample_train -1 \
+                    --subsample_test 64 --subsample_train 30000 \
+                    --train_time 300  \
+                    --train_dir train_DCE_0516_R4_MSE05_SSIM05 \
+                    --gene_mse_factor 0.5    \
+                    --gene_ssim_factor 0.5   \
+                    --gpu_memory_fraction -0.45 \
+                    --hybrid_disc 0
+
+python srez_main.py --run train \
+                    --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/abdominal_DCE \
+                    --sample_size 200 --sample_size_y 100 \
+                    --sampling_pattern /home/enhaog/GANCS/srez/dataset_MRI/sampling_pattern_DCE/mask_2dvardesnity_radiaview_4fold.mat \
+                    --batch_size 8  --summary_period  1250 \
+                    --sample_test 604 --sample_train -1 \
+                    --subsample_test 64 --subsample_train 30000 \
+                    --train_time 300  \
+                    --train_dir train_DCE_0516_R4_MSE05_SSIM00 \
+                    --gene_mse_factor 0.5    \
+                    --gene_ssim_factor 0.0   \
+                    --gpu_memory_fraction -0.45 \
+                    --hybrid_disc 0                                                     
 
 
 """
@@ -90,8 +119,11 @@ tf.app.flags.DEFINE_float('epsilon', 1e-8,
 tf.app.flags.DEFINE_string('run', 'demo',
                             "Which operation to run. [demo|train]")   #demo
 
-tf.app.flags.DEFINE_float('gene_l1l2_factor', 0.5,
+tf.app.flags.DEFINE_float('gene_l1l2_factor', 0.8,
                           "The ratio of l1 l2 factor, MSE=alpha*l1+(1-alpha)*l2")
+
+tf.app.flags.DEFINE_float('gene_ssim_factor', 0.5,
+                          "The ratio of ssim vs l1l2 factor, MSE=beta*ssim+(1-beta)*l1l2")
 
 tf.app.flags.DEFINE_float('gene_log_factor', 0,
                           "Multiplier for generator fool loss term, weighting log-loss vs LS loss")
@@ -235,10 +267,13 @@ def get_filenames(dir_file='', shuffle_filename=False):
 
 
 
-def setup_tensorflow(gpu_memory_fraction=0.4):
+def setup_tensorflow(gpu_memory_fraction=0.45):
     # Create session
     config = tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)
-    config.gpu_options.per_process_gpu_memory_fraction = min(gpu_memory_fraction, FLAGS.gpu_memory_fraction)
+    if FLAGS.gpu_memory_fraction>0:
+        config.gpu_options.per_process_gpu_memory_fraction = min(gpu_memory_fraction, FLAGS.gpu_memory_fraction)
+    else:
+        config.gpu_options.per_process_gpu_memory_fraction = min(1.0, -FLAGS.gpu_memory_fraction)
     sess = tf.Session(config=config)
     print('TF session setup for gpu usage cap of {0}'.format(config.gpu_options.per_process_gpu_memory_fraction))
 
@@ -389,7 +424,7 @@ def _train():
      disc_real_output, disc_fake_output, disc_var_list, disc_layers] = \
             srez_model.create_model(sess, noisy_train_features, train_labels)
 
-    gene_loss, gene_dc_loss, gene_ls_loss, gene_mse_loss = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
+    gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
     disc_real_loss, disc_fake_loss = \
                      srez_model.create_discriminator_loss(disc_real_output, disc_fake_output)
     disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')
