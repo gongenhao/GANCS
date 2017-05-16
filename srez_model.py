@@ -488,7 +488,7 @@ def batchnorm(input):
 
 
 def _generator_encoder_decoder(sess, features, labels, channels, layer_output_skip=3):
-
+    print('use encoder decoder model')
     # old variables
     layers = []    
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -576,6 +576,8 @@ def _generator_model_with_pool(sess, features, labels, channels, layer_output_sk
     mapsize = 3
     res_units  = [32, 64, 128] #[64, 32, 16]#[256, 128, 96]
     layer_pooling = [1, 1, 0]
+    print('use resnet conv-decov with pooling parameters:', res_units, layer_pooling)
+    
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
 
     # See Arxiv 1603.05027
@@ -646,7 +648,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     mapsize = 3
     res_units  = [128, 64, 32] #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
-
+    print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
 
     # See Arxiv 1603.05027
