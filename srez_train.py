@@ -149,9 +149,11 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
         # ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.disc_real_loss, td.disc_fake_loss, 
         #        td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
         # _, _, gene_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
-        ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
-        _, _, gene_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
-            
+        ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, td.list_gene_losses]                   
+        _, _, gene_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss, list_gene_losses = td.sess.run(ops, feed_dict=feed_dict)
+        
+        # get all losses
+        list_gene_losses = [float(x) for x in list_gene_losses]
     
         # verbose training progress
         if batch % 10 == 0:
@@ -204,6 +206,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                                     max_samples = batch_size,
                                     gene_param = {'train_log':err_log,
                                                   'train_loss':err_loss,
+                                                  'gene_loss':list_gene_losses,
                                                   'inference_time':inference_time,
                                                   'gene_layers':[x.tolist() for x in gene_layers], 
                                                   'disc_layers':[x.tolist() for x in disc_layers]})
