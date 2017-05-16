@@ -571,6 +571,8 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     # See Arxiv 1603.05027
     model = Model('GEN', features)
 
+    #
+
     for ru in range(len(res_units)-1):
         nunits  = res_units[ru]
 
@@ -699,6 +701,91 @@ def Fourier(x, separate_complex=True):
     return y_complex
 
 
+# SSIM
+def keras_var(x, axis=None, keepdims=False):
+    """Variance of a tensor, alongside the specified axis.
+    # Arguments
+        x: A tensor or variable.
+        axis: An integer, the axis to compute the variance.
+        keepdims: A boolean, whether to keep the dimensions or not.
+            If `keepdims` is `False`, the rank of the tensor is reduced
+            by 1. If `keepdims` is `True`,
+            the reduced dimension is retained with length 1.
+    # Returns
+        A tensor with the variance of elements of `x`.
+    """
+    # axis = _normalize_axis(axis, ndim(x))
+    if x.dtype.base_dtype == tf.bool:
+        x = tf.cast(x, floatx())
+    m = tf.reduce_mean(x, reduction_indices=axis, keep_dims=True)
+    devs_squared = tf.square(x - m)
+    return tf.reduce_mean(devs_squared,
+                          reduction_indices=axis,
+                          keep_dims=keepdims)
+
+
+def keras_std(x, axis=None, keepdims=False):
+    """Standard deviation of a tensor, alongside the specified axis.
+    # Arguments
+        x: A tensor or variable.
+        axis: An integer, the axis to compute the standard deviation.
+        keepdims: A boolean, whether to keep the dimensions or not.
+            If `keepdims` is `False`, the rank of the tensor is reduced
+            by 1. If `keepdims` is `True`,
+            the reduced dimension is retained with length 1.
+    # Returns
+        A tensor with the standard deviation of elements of `x`.
+    """
+    return tf.sqrt(keras_var(x, axis=axis, keepdims=keepdims))
+
+
+def keras_mean(x, axis=None, keepdims=False):
+    """Mean of a tensor, alongside the specified axis.
+    # Arguments
+        x: A tensor or variable.
+        axis: A list of integer. Axes to compute the mean.
+        keepdims: A boolean, whether to keep the dimensions or not.
+            If `keepdims` is `False`, the rank of the tensor is reduced
+            by 1 for each entry in `axis`. If `keep_dims` is `True`,
+            the reduced dimensions are retained with length 1.
+    # Returns
+        A tensor with the mean of elements of `x`.
+    """
+    # axis = _normalize_axis(axis, ndim(x))
+    if x.dtype.base_dtype == tf.bool:
+        x = tf.cast(x, floatx())
+    return tf.reduce_mean(x, reduction_indices=axis, keep_dims=keepdims)
+
+def loss_DSSIS_tf11(y_true, y_pred, patch_size=5, batch_size=-1):
+    # get batch size
+    if batch_size<0:
+        batch_size = int(y_true.get_shape()[0])
+    else:
+        y_true = tf.reshape(y_true, [batch_size] + get_shape(y_pred)[1:])
+        y_pred = tf.reshape(y_pred, [batch_size] + get_shape(y_pred)[1:])
+    # batch, x, y, channel
+    # y_true = tf.transpose(y_true, [0, 2, 3, 1])
+    # y_pred = tf.transpose(y_pred, [0, 2, 3, 1])
+    patches_true = tf.extract_image_patches(y_true, [1, patch_size, patch_size, 1], [1, 2, 2, 1], [1, 1, 1, 1], "SAME")
+    patches_pred = tf.extract_image_patches(y_pred, [1, patch_size, patch_size, 1], [1, 2, 2, 1], [1, 1, 1, 1], "SAME")
+    print(patches_true, patches_pred)
+    u_true = keras_mean(patches_true, axis=3)
+    u_pred = keras_mean(patches_pred, axis=3)
+    print(u_true, u_pred)
+    var_true = keras_var(patches_true, axis=3)
+    var_pred = keras_var(patches_pred, axis=3)
+    std_true = tf.sqrt(var_true)
+    std_pred = tf.sqrt(var_pred)
+    print(std_true, std_pred)
+    c1 = 0.01 ** 2
+    c2 = 0.03 ** 2
+    ssim = (2 * u_true * u_pred + c1) * (2 * std_pred * std_true + c2)
+    denom = (u_true ** 2 + u_pred ** 2 + c1) * (var_pred + var_true + c2)
+    ssim /= denom
+    print(ssim)
+    # ssim = tf.select(tf.is_nan(ssim), K.zeros_like(ssim), ssim)
+    return tf.reduce_mean(((1.0 - ssim) / 2), name='ssim_loss')
+
 def create_generator_loss(disc_output, gene_output, features, labels):
     # I.e. did we fool the discriminator?
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_output, labels=tf.ones_like(disc_output))
@@ -737,6 +824,11 @@ def create_generator_loss(disc_output, gene_output, features, labels):
     gene_l2_loss  = tf.reduce_mean(tf.square(gene_output - labels), name='gene_l2_loss')
     gene_mse_loss = tf.add(FLAGS.gene_l1l2_factor * gene_l1_loss, 
                         (1.0 - FLAGS.gene_l1l2_factor) * gene_l2_loss, name='gene_mse_loss')
+
+    #ssim loss
+    gene_ssim_loss = loss_DSSIS_tf11(labels, gene_output)
+    gene_mixmse_loss = tf.add(FLAGS.gene_ssim_factor * gene_ssim_loss, 
+                            (1.0 - FLAGS.gene_ssim_factor) * gene_mse_loss, name='gene_mixmse_loss')
     
     # generator fool descriminator loss: gan LS or log loss
     gene_fool_loss = tf.add((1.0 - FLAGS.gene_log_factor) * gene_ls_loss,
@@ -748,9 +840,13 @@ def create_generator_loss(disc_output, gene_output, features, labels):
     
     #total loss = fool-loss + data consistency loss + mse forward-passing loss
     gene_loss     = tf.add((1.0 - FLAGS.gene_mse_factor) * gene_non_mse_l2, 
-                            FLAGS.gene_mse_factor * gene_mse_loss, name='gene_loss')
+                            FLAGS.gene_mse_factor * gene_mixmse_loss, name='gene_loss')
     
-    return gene_loss, gene_dc_loss, gene_fool_loss, gene_mse_loss
+    #list of loss
+    list_gene_lose = [gene_mixmse_loss, gene_mse_loss, gene_l2_loss, gene_l1_loss, gene_ssim_loss, # regression loss
+                        gene_dc_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
+
+    return gene_loss, gene_dc_loss, gene_fool_loss, list_gene_lose
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output):
