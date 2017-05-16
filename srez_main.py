@@ -40,10 +40,10 @@ python srez_main.py --run train \
                     --sample_test 604 --sample_train -1 \
                     --subsample_test 64 --subsample_train 30000 \
                     --train_time 3  \
-                    --train_dir train_DCE_0509_R4_MSE10 \
+                    --train_dir train_DCE_test \
                     --gene_mse_factor 1.0    \
                     --gpu_memory_fraction 0.4 \
-                    --hybrid_disc 0   
+                    --architecture pool
 
 # with ssim     
 python srez_main.py --run train \
@@ -122,7 +122,7 @@ tf.app.flags.DEFINE_string('run', 'demo',
 tf.app.flags.DEFINE_float('gene_l1l2_factor', 0.8,
                           "The ratio of l1 l2 factor, MSE=alpha*l1+(1-alpha)*l2")
 
-tf.app.flags.DEFINE_float('gene_ssim_factor', 0.5,
+tf.app.flags.DEFINE_float('gene_ssim_factor', 0.0,
                           "The ratio of ssim vs l1l2 factor, MSE=beta*ssim+(1-beta)*l1l2")
 
 tf.app.flags.DEFINE_float('gene_log_factor', 0,
@@ -131,7 +131,7 @@ tf.app.flags.DEFINE_float('gene_log_factor', 0,
 tf.app.flags.DEFINE_float('gene_dc_factor', 0.1,
                           "Multiplier for generator data-consistency L2 loss term for data consistency, weighting Data-Consistency with GD-loss for GAN-loss")
 
-tf.app.flags.DEFINE_float('gene_mse_factor', 0.0001,
+tf.app.flags.DEFINE_float('gene_mse_factor', 0.1,
                           "Multiplier for generator MSE loss for regression accuracy, weighting MSE VS GAN-loss")
 
 tf.app.flags.DEFINE_float('learning_beta1', 0.5,
@@ -208,6 +208,9 @@ tf.app.flags.DEFINE_float('gpu_memory_fraction', 0.4,
 
 tf.app.flags.DEFINE_integer('hybrid_disc', 0,
                             "whether/level to augment discriminator input to image+kspace hybrid space.")
+
+tf.app.flags.DEFINE_string('architecture','resnet',
+                            "model arch used for generator, ex: resnet, aec, pool")
 
 
 def mkdirp(path):
@@ -422,7 +425,8 @@ def _train():
     [gene_minput, gene_moutput, \
      gene_output, gene_var_list, gene_layers, gene_mlayers, \
      disc_real_output, disc_fake_output, disc_var_list, disc_layers] = \
-            srez_model.create_model(sess, noisy_train_features, train_labels)
+            srez_model.create_model(sess, noisy_train_features, train_labels,
+                architecture=FLAGS.architecture)
 
     gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
     disc_real_loss, disc_fake_loss = \

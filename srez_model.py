@@ -295,7 +295,20 @@ class Model:
         out  = tf.image.resize_nearest_neighbor(self.get_output(), size)
 
         self.outputs.append(out)
-        return self        
+        return self    
+
+    def add_concat(self, layer_add):
+        last_layer = self.get_output()
+        prev_shape = last_layer.get_shape()
+        try:
+            out = tf.concat(axis = 3, values = [last_layer, layer_add])
+            self.outputs.append(out)
+        except:
+            print('fail to concat {0} and {1}'.format(last_layer, layer_add))
+        return self    
+
+
+
 
     def get_output(self):
         """Returns the output from the topmost layer of the network"""
@@ -440,7 +453,7 @@ def conv(batch_input, out_channels, stride=2, size_kernel=4):
         conv = tf.nn.conv2d(padded_input, filter, [1, stride, stride, 1], padding="VALID")
         return conv
 
-def deconv(batch_input, out_channels, size_kernel=4):
+def deconv(batch_input, out_channels, size_kernel=3):
     with tf.variable_scope("deconv"):
         batch, in_height, in_width, in_channels = [int(d) for d in batch_input.get_shape()]
         filter = tf.get_variable("filter", [size_kernel, size_kernel, out_channels, in_channels], dtype=tf.float32, initializer=tf.random_normal_initializer(0, 0.02))
@@ -532,8 +545,8 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
             output = deconv(rectified, out_channels)
             output = batchnorm(output)
 
-            if dropout > 0.0:
-                output = tf.nn.dropout(output, keep_prob=1 - dropout)
+            # if dropout > 0.0:
+            #     output = tf.nn.dropout(output, keep_prob = 1 - dropout)
 
             layers.append(output)
 
@@ -545,7 +558,8 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
         input = tf.concat(axis=3, values=[layer[-1], layers[0]]) #, axis=3)
         rectified = tf.nn.relu(input)
         output = deconv(rectified, channels)
-        output = tf.tanh(output)
+        # output = tf.tanh(output)
+        output = tf.nn.sigmoid(output)
         layers.append(output)
 
 
@@ -557,6 +571,73 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
     output_layers = [layers[0]] + layers[1:layer_output_skip:-1] + [layers[-1]]
 
     return layers[-1], gene_vars, output_layers
+
+def _generator_model_with_pool(sess, features, labels, channels, layer_output_skip=3):
+    mapsize = 3
+    res_units  = [32, 64, 128] #[64, 32, 16]#[256, 128, 96]
+    layer_pooling = [1, 1, 0]
+    old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
+
+    # See Arxiv 1603.05027
+    model = Model('GEN', features)
+    list_layer_before_pool=[]
+    for index_layer in range(len(res_units)-1):
+        nunits  = res_units[index_layer]
+
+        for j in range(1):
+            model.add_residual_block(nunits, mapsize=mapsize)
+
+        list_layer_before_pool.append(model.outputs[-1])
+        
+        # cov pool
+        model.add_batch_norm()
+        model.add_relu()
+        stride = layer_pooling[index_layer]+1
+        model.add_conv2d(nunits, mapsize=mapsize, stride=stride, stddev_factor=1.)
+
+    print('list_layer_before_pool', list_layer_before_pool)
+    print('model.outputs', model.outputs)
+
+    for index_layer_rev in range(len(res_units)-1):
+        index_layer = len(list_layer_before_pool)-1-index_layer_rev
+        nunits  = res_units[index_layer]
+
+        for j in range(2):
+            model.add_residual_block(nunits, mapsize=mapsize)
+
+        # up-pool cov
+        if layer_pooling[index_layer]:
+            model.add_upscale()
+        model.add_batch_norm()
+        model.add_relu()
+        model.add_conv2d_transpose(nunits, mapsize=mapsize, stride=1, stddev_factor=1.)
+
+        # concat
+        model.add_concat(list_layer_before_pool[index_layer])
+        
+
+    # conv 
+    nunits = res_units[-1]
+    model.add_conv2d(nunits, mapsize=mapsize, stride=1, stddev_factor=2.)
+    model.add_relu()
+
+    # filter to channel number
+    model.add_conv2d(nunits, mapsize=1, stride=1, stddev_factor=2.)
+    model.add_relu()
+
+    # output
+    model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)
+    model.add_sigmoid()
+
+    # get variables
+    new_vars  = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
+    gene_vars = list(set(new_vars) - set(old_vars))
+
+    # select subset of layers
+    output_layers = [model.outputs[0]] + model.outputs[1:layer_output_skip:-1] + [model.outputs[-1]]
+
+    return model.get_output(), gene_vars, output_layers
+
 
 
 def _generator_model_with_scale(sess, features, labels, channels, layer_output_skip=3):
@@ -626,6 +707,8 @@ def create_model(sess, features, labels, architecture='resnet'):
     # TBD: Is there a better way to instance the generator?
     if architecture == 'aec':
         function_generator = lambda x,y,z,w: _generator_encoder_decoder(x,y,z,w)
+    elif architecture == 'pool':
+        function_generator = lambda x,y,z,w: _generator_model_with_pool(x,y,z,w)
     else:
         function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w)
     with tf.variable_scope('gene') as scope:
