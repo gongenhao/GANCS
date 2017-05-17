@@ -206,7 +206,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                               'train_loss':err_loss,
                               'gene_loss':list_gene_losses,
                               'inference_time':inference_time,
-                              'gene_layers':[x.tolist() for x in gene_layers if x.shape()[-1]<10], 
+                              'gene_layers':[x.tolist() for x in gene_layers if x.shape[-1]<10], 
                               'disc_layers':[x.tolist() for x in disc_layers]}                
                 # gene layers are too large
                 if index_batch_test>0:
