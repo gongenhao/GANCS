@@ -136,7 +136,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
     print('prepare {0} test feature batches'.format(num_batch_test))
     # print([type(x) for x in list_test_features])
     # print([type(x) for x in list_test_labels])
-
+    accumuated_err_loss=[]
     while not done:
         batch += 1
         gene_ls_loss = gene_dc_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
@@ -163,9 +163,10 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                     int(100*elapsed/FLAGS.train_time), FLAGS.train_time - elapsed, batch, 
                     gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
             print(err_log)
+            # update err loss
             err_loss = [int(batch), float(gene_loss), float(gene_dc_loss), 
                         float(gene_ls_loss), float(disc_real_loss), float(disc_fake_loss)]
-
+            accumuated_err_loss.append(err_loss)
             # Finished?            
             current_progress = elapsed / FLAGS.train_time
             if current_progress >= 1.0:
@@ -203,7 +204,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
 
                 # save record
                 gene_param = {'train_log':err_log,
-                              'train_loss':err_loss,
+                              'train_loss':accumuated_err_loss,
                               'gene_loss':list_gene_losses,
                               'inference_time':inference_time,
                               'gene_layers':[x.tolist() for x in gene_layers if x.shape[-1]<10], 
@@ -219,7 +220,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 gene_output = None
                 gene_layers = None
                 disc_layers = None
-
+                accumuated_err_loss = []
 
         # export train batches
         if OUTPUT_TRAIN_SAMPLES and (batch % FLAGS.summary_train_period == 0):
