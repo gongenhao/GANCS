@@ -666,7 +666,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     if num_dc_layers>0:
         # parameters
         threshold_zero = 1./255.
-        mix_DC = 0.9
+        mix_DC = 0.95
 
         # sampled kspace
         first_layer = features
@@ -693,16 +693,16 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
             # reshape
             labels_size = tf.shape(labels)
             corrected_mag = tf.reshape(corrected_mag, labels_size)
-            # model.add_layer(corrected_mag)
+            model.add_layer(corrected_mag)
 
             # concat
-            model.add_concat(corrected_mag)
+            # model.add_concat(corrected_mag)
 
             # mixing and project to image domain
-            # model.add_residual_block(nunits, mapsize=mapsize)
-            model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
+            model.add_residual_block(channels, mapsize=mapsize)
+            # model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
             # final output
-            model.add_sigmoid()
+            # model.add_sigmoid()
 
         print('variational network with DC correction', model.outputs)
 
