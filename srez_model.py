@@ -308,7 +308,9 @@ class Model:
             print('fail to concat {0} and {1}'.format(last_layer, layer_add))
         return self    
 
-
+    def add_layer(self, layer_add):
+        self.outputs.append(layer_add)
+        return self 
 
 
     def get_output(self):
@@ -629,8 +631,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     # See Arxiv 1603.05027
     model = Model('GEN', features)
 
-    #
-
+    # loop different levels
     for ru in range(len(res_units)-1):
         nunits  = res_units[ru]
 
@@ -685,17 +686,23 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
 
             # inverse fft
             corrected_complex = tf.ifft2d(corrected_kspace)
-            corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
             
             # get abs
-            model.add_concat(corrected_mag)
-        
-            # mixing and project to image domain
-            model.add_residual_block(nunits, mapsize=mapsize)
-            model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
+            corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
+            
+            # reshape
+            labels_size = tf.shape(labels)
+            corrected_mag = tf.reshape(corrected_mag, labels_size)
+            # model.add_layer(corrected_mag)
 
-        # final output
-        model.add_sigmoid()
+            # concat
+            model.add_concat(corrected_mag)
+
+            # mixing and project to image domain
+            # model.add_residual_block(nunits, mapsize=mapsize)
+            model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
+            # final output
+            model.add_sigmoid()
 
         print('variational network with DC correction', model.outputs)
 
@@ -726,7 +733,7 @@ def create_model(sess, features, labels, architecture='resnet'):
     elif architecture == 'pool':
         function_generator = lambda x,y,z,w: _generator_model_with_pool(x,y,z,w)
     elif architecture == 'var':
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,num_dc_layers=2,layer_output_skip=7)
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,num_dc_layers=1,layer_output_skip=7)
     else:
         function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,layer_output_skip=7)
     with tf.variable_scope('gene') as scope:
