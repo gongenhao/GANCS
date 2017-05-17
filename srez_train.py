@@ -210,14 +210,10 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                               'disc_layers':[x.tolist() for x in disc_layers]}                
                 if index_batch_test>0:
                     gene_param['gene_layers']=[]
-                _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test{0}'.format(index_batch_test),                                     
+                _summarize_progress(td, test_feature, test_label, gene_output, batch, 
+                                    'test{0}'.format(index_batch_test),                                     
                                     max_samples = batch_size,
-                                    gene_param = {'train_log':err_log,
-                                                  'train_loss':err_loss,
-                                                  'gene_loss':list_gene_losses,
-                                                  'inference_time':inference_time,
-                                                  'gene_layers':[x.tolist() for x in gene_layers], 
-                                                  'disc_layers':[x.tolist() for x in disc_layers]})
+                                    gene_param = gene_param)
                 # try to reduce mem
                 gene_output = None
                 gene_layers = None
