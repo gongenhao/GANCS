@@ -287,11 +287,12 @@ class Model:
         self.outputs.append(out)
         return self
 
-    def add_upscale(self):
+    def add_upscale(self, size=None):
         """Adds a layer that upscales the output by 2x through nearest neighbor interpolation"""
 
         prev_shape = self.get_output().get_shape()
-        size = [2 * int(s) for s in prev_shape[1:3]]
+        if size is None:
+            size = [2 * int(s) for s in prev_shape[1:3]]
         out  = tf.image.resize_nearest_neighbor(self.get_output(), size)
 
         self.outputs.append(out)
@@ -574,7 +575,7 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
 
 def _generator_model_with_pool(sess, features, labels, channels, layer_output_skip=3):
     mapsize = 3
-    res_units  = [32, 64, 128] #[64, 32, 16]#[256, 128, 96]
+    res_units  = [64, 128, 128] #[64, 32, 16]#[256, 128, 96]
     layer_pooling = [1, 1, 0]
     print('use resnet conv-decov with pooling parameters:', res_units, layer_pooling)
     
@@ -586,14 +587,19 @@ def _generator_model_with_pool(sess, features, labels, channels, layer_output_sk
     for index_layer in range(len(res_units)-1):
         nunits  = res_units[index_layer]
 
-        for j in range(1):
+        for j in range(2):
             model.add_residual_block(nunits, mapsize=mapsize)
 
         list_layer_before_pool.append(model.outputs[-1])
         
-        # cov pool
+        # conv 
+        # model.add_batch_norm()
+        # model.add_relu()
+        # model.add_conv2d_transpose(nunits, mapsize=mapsize, stride=1, stddev_factor=1.)
         model.add_batch_norm()
         model.add_relu()
+
+        # pooling/striding
         stride = layer_pooling[index_layer]+1
         model.add_conv2d(nunits, mapsize=mapsize, stride=stride, stddev_factor=1.)
 
@@ -610,6 +616,7 @@ def _generator_model_with_pool(sess, features, labels, channels, layer_output_sk
         # up-pool cov
         if layer_pooling[index_layer]:
             model.add_upscale()
+
         model.add_batch_norm()
         model.add_relu()
         model.add_conv2d_transpose(nunits, mapsize=mapsize, stride=1, stddev_factor=1.)
