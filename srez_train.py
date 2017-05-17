@@ -200,8 +200,16 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 print('gene_layers',[x.shape for x in gene_layers])
                 # print('disc_var_list',[x.shape for x in disc_var_list])
                 print('disc_layers',[x.shape for x in disc_layers])
-                # gene_layers=gene_layers[:3]+gene_layers[3:-3][::3]+gene_layers[-3:]
-                # disc_layers=disc_layers[:3]+disc_layers[3:-3][::3]+disc_layers[-3:]
+
+                # save record
+                gene_param = {'train_log':err_log,
+                              'train_loss':err_loss,
+                              'gene_loss':list_gene_losses,
+                              'inference_time':inference_time,
+                              'gene_layers':[x.tolist() for x in gene_layers], 
+                              'disc_layers':[x.tolist() for x in disc_layers]}                
+                if index_batch_test>0:
+                    gene_param['gene_layers']=[]
                 _summarize_progress(td, test_feature, test_label, gene_output, batch, 'test{0}'.format(index_batch_test),                                     
                                     max_samples = batch_size,
                                     gene_param = {'train_log':err_log,
