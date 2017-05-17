@@ -734,7 +734,12 @@ def create_model(sess, features, labels, architecture='resnet'):
     elif architecture == 'pool':
         function_generator = lambda x,y,z,w: _generator_model_with_pool(x,y,z,w)
     elif architecture.startswith('var'):
-        num_dc_layers = int(architecture.split('var')[-1])
+        num_dc_layers = 1
+        if architecture!='var':
+            try:
+                num_dc_layers = int(architecture.split('var')[-1])
+            except:
+                pass
         function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,
                                                 num_dc_layers=num_dc_layers, layer_output_skip=7)
     else:
