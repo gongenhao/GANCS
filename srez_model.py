@@ -335,7 +335,7 @@ class Model:
         scope = self._get_layer_str(layer)
         return tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope)
 
-def _discriminator_model(sess, features, disc_input, layer_output_skip=3, hybrid_disc=0):
+def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid_disc=0):
 
     # update 05092017, hybrid_disc consider whether to use hybrid space for discriminator
     # to study the kspace distribution/smoothness properties
@@ -400,50 +400,6 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=3, hybrid
 
     return model.get_output(), disc_vars, output_layers
 
-# def _generator_model(sess, features, labels, channels):
-#     # Upside-down all-convolutional resnet
-
-#     mapsize = 3
-#     res_units  = [256, 128, 96]
-
-#     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
-
-#     # See Arxiv 1603.05027
-#     model = Model('GEN', features)
-
-#     for ru in range(len(res_units)-1):
-#         nunits  = res_units[ru]
-
-#         for j in range(2):
-#             model.add_residual_block(nunits, mapsize=mapsize)
-
-#         # Spatial upscale (see http://distill.pub/2016/deconv-checkerboard/)
-#         # and transposed convolution
-#         # model.add_upscale()
-        
-#         model.add_batch_norm()
-#         model.add_relu()
-#         model.add_conv2d_transpose(nunits, mapsize=mapsize, stride=1, stddev_factor=1.)
-
-#     # Finalization a la "all convolutional net"
-#     nunits = res_units[-1]
-#     model.add_conv2d(nunits, mapsize=mapsize, stride=1, stddev_factor=2.)
-#     # Worse: model.add_batch_norm()
-#     model.add_relu()
-
-#     model.add_conv2d(nunits, mapsize=1, stride=1, stddev_factor=2.)
-#     # Worse: model.add_batch_norm()
-#     model.add_relu()
-
-#     # Last layer is sigmoid with no batch normalization
-#     model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)
-#     model.add_sigmoid()
-    
-#     new_vars  = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
-#     gene_vars = list(set(new_vars) - set(old_vars))
-
-#     return model.get_output(), gene_vars
-
 def conv(batch_input, out_channels, stride=2, size_kernel=4):
     with tf.variable_scope("conv"):
         in_channels = batch_input.get_shape()[3]
@@ -487,8 +443,21 @@ def batchnorm(input):
         normalized = tf.nn.batch_normalization(input, mean, variance, offset, scale, variance_epsilon=variance_epsilon)
         return normalized      
 
+def Fourier(x, separate_complex=True):    
+    x = tf.cast(x, tf.complex64)
+    if separate_complex:
+        x_complex = x[:,:,:,0]+1j*x[:,:,:,1]
+    else:
+        x_complex = x
+    x_complex = tf.reshape(x_complex,x_complex.get_shape()[:3])
+    y_complex = tf.fft2d(x_complex)
+    print('using Fourier, input dim {0}, output dim {1}'.format(x.get_shape(), y_complex.get_shape()))
+    # x = tf.cast(x, tf.complex64)
+    # y = tf.fft3d(x)
+    # y = y[:,:,:,-1]
+    return y_complex
 
-def _generator_encoder_decoder(sess, features, labels, channels, layer_output_skip=3):
+def _generator_encoder_decoder(sess, features, labels, channels, layer_output_skip=5):
     print('use encoder decoder model')
     # old variables
     layers = []    
@@ -573,7 +542,7 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
 
     return layers[-1], gene_vars, output_layers
 
-def _generator_model_with_pool(sess, features, labels, channels, layer_output_skip=3):
+def _generator_model_with_pool(sess, features, labels, channels, layer_output_skip=5):
     mapsize = 3
     res_units  = [64, 128, 128] #[64, 32, 16]#[256, 128, 96]
     layer_pooling = [1, 1, 0]
@@ -647,9 +616,8 @@ def _generator_model_with_pool(sess, features, labels, channels, layer_output_sk
 
     return model.get_output(), gene_vars, output_layers
 
-
-
-def _generator_model_with_scale(sess, features, labels, channels, layer_output_skip=3):
+def _generator_model_with_scale(sess, features, labels, channels, layer_output_skip=5,
+                                num_dc_layers=0):
     # Upside-down all-convolutional resnet
 
     mapsize = 3
@@ -692,6 +660,45 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     # Last layer is sigmoid with no batch normalization
     model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)
     model.add_sigmoid()
+
+    # add dc connection for each block
+    if num_dc_layers>0:
+        # parameters
+        threshold_zero = 1./255.
+        mix_DC = 0.9
+
+        # sampled kspace
+        first_layer = features
+        feature_kspace = Fourier(first_layer, separate_complex=True)        
+        mask_kspace = tf.greater(tf.abs(feature_kspace),threshold_zero)        
+        mask_kspace = tf.cast(mask_kspace, tf.complex64) * mix_DC
+        projected_kspace = feature_kspace * mask_kspace
+
+        # add dc layers
+        for index_dc_layer in range(num_dc_layers):
+            # get output and input
+            last_layer = model.outputs[-1]                               
+            # compute kspace
+            gene_kspace = Fourier(last_layer, separate_complex=False)                
+            # affine projection
+            corrected_kspace =  projected_kspace + gene_kspace * (1.0 - mask_kspace)
+
+            # inverse fft
+            corrected_complex = tf.ifft2d(corrected_kspace)
+            corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
+            
+            # get abs
+            model.add_concat(corrected_mag)
+        
+            # mixing and project to image domain
+            model.add_residual_block(nunits, mapsize=mapsize)
+            model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
+
+        # final output
+        model.add_sigmoid()
+
+        print('variational network with DC correction', model.outputs)
+
     
     new_vars  = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
     gene_vars = list(set(new_vars) - set(old_vars))
@@ -718,18 +725,18 @@ def create_model(sess, features, labels, architecture='resnet'):
         function_generator = lambda x,y,z,w: _generator_encoder_decoder(x,y,z,w)
     elif architecture == 'pool':
         function_generator = lambda x,y,z,w: _generator_model_with_pool(x,y,z,w)
+    elif architecture == 'var':
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,num_dc_layers=2,layer_output_skip=7)
     else:
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w)
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,layer_output_skip=7)
     with tf.variable_scope('gene') as scope:
         gene_output, gene_var_list, gene_layers = function_generator(sess, features, labels, 1)
-                    # _generator_model_with_scale(sess, features, labels, 1)
-
+                    
         scope.reuse_variables()
 
         # for testing input
         gene_moutput, _ , gene_mlayers= function_generator(sess, gene_minput, labels, 1)
-                    # _generator_model_with_scale(sess, gene_minput, labels, 1)
-    
+                    
     # Discriminator with real data
     disc_real_input = tf.identity(labels, name='disc_real_input')
 
@@ -745,52 +752,7 @@ def create_model(sess, features, labels, architecture='resnet'):
 
     return [gene_minput,      gene_moutput,
             gene_output,      gene_var_list, gene_layers, gene_mlayers,
-            disc_real_output, disc_fake_output, disc_var_list, disc_layers]
-            
-
-def _downscale(images, K):
-    """Differentiable image downscaling by a factor of K"""
-    arr = np.zeros([K, K, 3, 3])
-    arr[:,:,0,0] = 1.0/(K*K)
-    arr[:,:,1,1] = 1.0/(K*K)
-    arr[:,:,2,2] = 1.0/(K*K)
-    dowscale_weight = tf.constant(arr, dtype=tf.float32)
-    
-    downscaled = tf.nn.conv2d(images, dowscale_weight,
-                              strides=[1, K, K, 1],
-                              padding='SAME')
-    return downscaled
-
-# def create_generator_loss(disc_output, gene_output, features):
-#     # I.e. did we fool the discriminator?
-#     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(disc_output, tf.ones_like(disc_output))
-#     gene_ce_loss  = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
-
-#     # I.e. does the result look like the feature?
-#     K = int(gene_output.get_shape()[1])//int(features.get_shape()[1])
-#     assert K == 2 or K == 4 or K == 8    
-#     downscaled = _downscale(gene_output, K)
-    
-#     gene_l1_loss  = tf.reduce_mean(tf.abs(downscaled - features), name='gene_l1_loss')
-
-#     gene_loss     = tf.add((1.0 - FLAGS.gene_l1_factor) * gene_ce_loss,
-#                            FLAGS.gene_l1_factor * gene_l1_loss, name='gene_loss')
-    
-#     return gene_loss
-
-def Fourier(x, separate_complex=True):    
-    x = tf.cast(x, tf.complex64)
-    if separate_complex:
-        x_complex = x[:,:,:,0]+1j*x[:,:,:,1]
-    else:
-        x_complex = x
-    x_complex = tf.reshape(x_complex,x_complex.get_shape()[:3])
-    y_complex = tf.fft2d(x_complex)
-    print('using Fourier, input dim {0}, output dim {1}'.format(x.get_shape(), y_complex.get_shape()))
-    # x = tf.cast(x, tf.complex64)
-    # y = tf.fft3d(x)
-    # y = y[:,:,:,-1]
-    return y_complex
+            disc_real_output, disc_fake_output, disc_var_list, disc_layers]    
 
 
 # SSIM
