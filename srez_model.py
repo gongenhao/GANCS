@@ -702,6 +702,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
             model.add_residual_block(channels, mapsize=mapsize)
             # model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
             # final output
+            
             # model.add_sigmoid()
 
         print('variational network with DC correction', model.outputs)
@@ -732,10 +733,13 @@ def create_model(sess, features, labels, architecture='resnet'):
         function_generator = lambda x,y,z,w: _generator_encoder_decoder(x,y,z,w)
     elif architecture == 'pool':
         function_generator = lambda x,y,z,w: _generator_model_with_pool(x,y,z,w)
-    elif architecture == 'var':
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,num_dc_layers=1,layer_output_skip=7)
+    elif architecture.startswith('var'):
+        num_dc_layers = int(architecture.split('var')[-1])
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,
+                                                num_dc_layers=num_dc_layers, layer_output_skip=7)
     else:
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,layer_output_skip=7)
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,
+                                                num_dc_layers=0, layer_output_skip=7)
     with tf.variable_scope('gene') as scope:
         gene_output, gene_var_list, gene_layers = function_generator(sess, features, labels, 1)
                     
