@@ -396,7 +396,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=3, hybrid
     disc_vars = list(set(new_vars) - set(old_vars))
 
     #select output
-    output_layers = [model.outputs[0]] + model.outputs[1:layer_output_skip:-1] + [model.outputs[-1]]
+    output_layers = [model.outputs[0]] + model.outputs[1:-1][::layer_output_skip] + [model.outputs[-1]]
 
     return model.get_output(), disc_vars, output_layers
 
@@ -569,7 +569,7 @@ def _generator_encoder_decoder(sess, features, labels, channels, layer_output_sk
     gene_vars = list(set(new_vars) - set(old_vars))
 
     # select subset of layers
-    output_layers = [layers[0]] + layers[1:layer_output_skip:-1] + [layers[-1]]
+    output_layers = [layers[0]] + layers[1:-1][::layer_output_skip] + [layers[-1]]
 
     return layers[-1], gene_vars, output_layers
 
@@ -643,7 +643,7 @@ def _generator_model_with_pool(sess, features, labels, channels, layer_output_sk
     gene_vars = list(set(new_vars) - set(old_vars))
 
     # select subset of layers
-    output_layers = [model.outputs[0]] + model.outputs[1:layer_output_skip:-1] + [model.outputs[-1]]
+    output_layers = [model.outputs[0]] + model.outputs[1:-1][::layer_output_skip] + [model.outputs[-1]]
 
     return model.get_output(), gene_vars, output_layers
 
@@ -697,7 +697,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
     gene_vars = list(set(new_vars) - set(old_vars))
 
     # select subset of layers
-    output_layers = [model.outputs[0]] + model.outputs[1:layer_output_skip:-1] + [model.outputs[-1]]
+    output_layers = [model.outputs[0]] + model.outputs[1:-1][::layer_output_skip] + [model.outputs[-1]]
 
     return model.get_output(), gene_vars, output_layers
 
