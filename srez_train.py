@@ -169,7 +169,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
             accumuated_err_loss.append(err_loss)
             # Finished?            
             current_progress = elapsed / FLAGS.train_time
-            if current_progress >= 1.0:
+            if (current_progress >= 1.0) or (batch > FLAGS.train_time*200):
                 done = True
             
             # Update learning rate
@@ -193,9 +193,9 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 ops = [td.gene_moutput, td.gene_mlayers, td.disc_layers]
                 
                 # get timing
-                start_time = time.time()
+                forward_passing_time = time.time()
                 gene_output, gene_layers, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
-                inference_time = time.time() - start_time
+                inference_time = time.time() - forward_passing_time
 
                 # print('gene_var_list',[x.shape for x in gene_var_list])
                 print('gene_layers',[x.shape for x in gene_layers])
