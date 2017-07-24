@@ -627,7 +627,7 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
 
     #image_size = tf.shape(features)
     mapsize = 3
-    res_units  = [128, 128] #[64, 32, 16]#[256, 128, 96]
+    res_units  = [128, 128, 128] #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated

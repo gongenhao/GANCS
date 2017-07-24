@@ -119,7 +119,7 @@ tf.app.flags.DEFINE_float('epsilon', 1e-8,
 tf.app.flags.DEFINE_string('run', 'demo',
                             "Which operation to run. [demo|train]")   #demo
 
-tf.app.flags.DEFINE_float('gene_l1l2_factor', 0.8,
+tf.app.flags.DEFINE_float('gene_l1l2_factor', 0.0,
                           "The ratio of l1 l2 factor, MSE=alpha*l1+(1-alpha)*l2")
 
 tf.app.flags.DEFINE_float('gene_ssim_factor', 0.0,
@@ -128,16 +128,16 @@ tf.app.flags.DEFINE_float('gene_ssim_factor', 0.0,
 tf.app.flags.DEFINE_float('gene_log_factor', 0,
                           "Multiplier for generator fool loss term, weighting log-loss vs LS loss")
 
-tf.app.flags.DEFINE_float('gene_dc_factor', 0.1,
+tf.app.flags.DEFINE_float('gene_dc_factor', 0.0,
                           "Multiplier for generator data-consistency L2 loss term for data consistency, weighting Data-Consistency with GD-loss for GAN-loss")
 
-tf.app.flags.DEFINE_float('gene_mse_factor', 0.1,
+tf.app.flags.DEFINE_float('gene_mse_factor', 1,
                           "Multiplier for generator MSE loss for regression accuracy, weighting MSE VS GAN-loss")
 
 tf.app.flags.DEFINE_float('learning_beta1', 0.5,
                           "Beta1 parameter used for AdamOptimizer")
 
-tf.app.flags.DEFINE_float('learning_rate_start', 0.00010,
+tf.app.flags.DEFINE_float('learning_rate_start', 0.000040,
                           "Starting learning rate used for AdamOptimizer")  #0.000020
 
 tf.app.flags.DEFINE_integer('learning_rate_half_life', 10000,
