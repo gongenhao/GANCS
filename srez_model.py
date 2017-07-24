@@ -781,7 +781,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         scope.reuse_variables()
 
        
-        gene_output_real = gene_output_3
+        gene_output_real = gene_output_1
         gene_output = tf.abs(tf.complex(gene_output_real[:,:,:,0], gene_output_real[:,:,:,1]))
         #print('gene_output_train', gene_output.get_shape()) 
         gene_output = tf.reshape(gene_output, [FLAGS.batch_size, rows, cols, 1])
@@ -798,7 +798,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         gene_moutput_3, _ , gene_mlayers_3 = function_generator(sess, gene_moutput_2, labels, masks, 1)
         scope.reuse_variables()
 
-        gene_moutput_real = gene_moutput_3
+        gene_moutput_real = gene_moutput_1
         gene_moutput = tf.abs(tf.complex(gene_moutput_real[:,:,:,0], gene_moutput_real[:,:,:,1]))
         #print('gene_moutput_test', gene_moutput.get_shape())
         gene_moutput = tf.reshape(gene_moutput, [FLAGS.batch_size, rows, cols, 1])
