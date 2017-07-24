@@ -137,10 +137,10 @@ tf.app.flags.DEFINE_float('gene_mse_factor', 0.1,
 tf.app.flags.DEFINE_float('learning_beta1', 0.5,
                           "Beta1 parameter used for AdamOptimizer")
 
-tf.app.flags.DEFINE_float('learning_rate_start', 0.000050,
+tf.app.flags.DEFINE_float('learning_rate_start', 0.00010,
                           "Starting learning rate used for AdamOptimizer")  #0.000020
 
-tf.app.flags.DEFINE_integer('learning_rate_half_life', 1000,
+tf.app.flags.DEFINE_integer('learning_rate_half_life', 10000,
                             "Number of batches until learning rate is halved")
 
 tf.app.flags.DEFINE_bool('log_device_placement', False,
@@ -305,13 +305,13 @@ def _demo():
     filenames = prepare_dirs(delete_train_dir=False)
 
     # Setup async input queues
-    features, labels = srez_input.setup_inputs(sess, filenames)
+    features, labels, masks = srez_input.setup_inputs(sess, filenames)
 
     # Create and initialize model
     [gene_minput, gene_moutput,
      gene_output, gene_var_list,
      disc_real_output, disc_fake_output, disc_var_list] = \
-            srez_model.create_model(sess, features, labels)
+            srez_model.create_model(sess, features, labels, masks)
 
     # Restore variables from checkpoint
     saver = tf.train.Saver()
@@ -353,7 +353,7 @@ def _train():
         index_permutation_split = random.sample(num_filename_all, num_filename_all)
         filenames_input = [filenames_input[x] for x in index_permutation_split]
         filenames_output = [filenames_output[x] for x in index_permutation_split]
-    print('filenames_input[:20]',filenames_input[:20])
+    #print('filenames_input[:20]',filenames_input[:20])
 
     # Separate training and test sets
     train_filenames_input = filenames_input[:-FLAGS.sample_test]    
@@ -380,7 +380,7 @@ def _train():
         test_filenames_output = [test_filenames_output[x] for x in index_sample_test_selected]
         print('randomly sampled {0} from {1} test samples'.format(len(test_filenames_input), len(filenames_input[:-FLAGS.sample_test])))
 
-    print('test_filenames_input',test_filenames_input)            
+    #print('test_filenames_input',test_filenames_input)            
 
     # get undersample mask
     from scipy import io as sio
@@ -392,7 +392,7 @@ def _train():
         mask = None
 
     # Setup async input queues
-    train_features, train_labels = srez_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
+    train_features, train_labels, train_masks = srez_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
                                                                         image_size=image_size, 
                                                                         # undersampling
                                                                         axis_undersample=FLAGS.axis_undersample, 
@@ -401,7 +401,7 @@ def _train():
                                                                         r_seed=FLAGS.R_seed,
                                                                         sampling_mask=mask
                                                                         )
-    test_features,  test_labels  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
+    test_features,  test_labels, test_masks  = srez_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
                                                                         image_size=image_size, 
                                                                         # undersampling
                                                                         axis_undersample=FLAGS.axis_undersample, 
@@ -409,8 +409,15 @@ def _train():
                                                                         r_alpha=FLAGS.R_alpha,
                                                                         r_seed=FLAGS.R_seed,
                                                                         sampling_mask=mask
-                                                                        )
+                                                                       
+                                                                   )
     
+
+    print('features_size', train_features.get_shape())
+    print('labels_size', train_labels.get_shape())
+    print('masks_size', train_masks.get_shape())
+
+
     # sample train and test
     num_sample_train = len(train_filenames_input)
     num_sample_test = len(test_filenames_input)
@@ -425,10 +432,10 @@ def _train():
     [gene_minput, gene_moutput, \
      gene_output, gene_var_list, gene_layers, gene_mlayers, \
      disc_real_output, disc_fake_output, disc_var_list, disc_layers] = \
-            srez_model.create_model(sess, noisy_train_features, train_labels,
+            srez_model.create_model(sess, noisy_train_features, train_labels, train_masks,
                 architecture=FLAGS.architecture)
 
-    gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels)
+    gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses = srez_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels, train_masks)
     disc_real_loss, disc_fake_loss = \
                      srez_model.create_discriminator_loss(disc_real_output, disc_fake_output)
     disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')

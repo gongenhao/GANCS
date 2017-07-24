@@ -115,9 +115,10 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     # The feature is zpad image with 2 channel, label is the ground-truth real-valued image
     feature = tf.reshape(image_zpad_concat, [image_size[0], image_size[1], 2])
     label   = tf.reshape(image_output, [image_size[0], image_size[1], 1])
+    mask = tf.reshape(DEFAULT_MAKS_TF_c, [image_size[0], image_size[1]])
 
     # Using asynchronous queues
-    features, labels = tf.train.batch([feature, label],
+    features, labels, masks = tf.train.batch([feature, label, mask],
                                       batch_size = FLAGS.batch_size,
                                       num_threads = num_threads,
                                       capacity = capacity_factor*FLAGS.batch_size,
@@ -125,5 +126,5 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
 
     tf.train.start_queue_runners(sess=sess)
       
-    return features, labels    
+    return features, labels, masks    
 

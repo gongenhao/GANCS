@@ -1,3 +1,4 @@
+
 import numpy as np
 import tensorflow as tf
 
@@ -618,12 +619,15 @@ def _generator_model_with_pool(sess, features, labels, channels, layer_output_sk
 
     return model.get_output(), gene_vars, output_layers
 
-def _generator_model_with_scale(sess, features, labels, channels, layer_output_skip=5,
+def _generator_model_with_scale(sess, features, labels, masks, channels, layer_output_skip=5,
                                 num_dc_layers=0):
     # Upside-down all-convolutional resnet
 
+    channels = 2
+
+    #image_size = tf.shape(features)
     mapsize = 3
-    res_units  = [128, 64, 32] #[64, 32, 16]#[256, 128, 96]
+    res_units  = [128, 128] #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -660,52 +664,67 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
 
     # Last layer is sigmoid with no batch normalization
     model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)
-    model.add_sigmoid()
+    #model.add_sigmoid()
 
     # add dc connection for each block
-    if num_dc_layers>0:
+    if num_dc_layers >= 0:
         # parameters
         threshold_zero = 1./255.
-        mix_DC = 0.95
+        mix_DC = 1 #0.95
 
         # sampled kspace
         first_layer = features
         feature_kspace = Fourier(first_layer, separate_complex=True)        
-        mask_kspace = tf.greater(tf.abs(feature_kspace),threshold_zero)        
+        mask_kspace = masks #tf.greater(tf.abs(feature_kspace),threshold_zero)        
         mask_kspace = tf.cast(mask_kspace, tf.complex64) * mix_DC
         projected_kspace = feature_kspace * mask_kspace
 
         # add dc layers
-        for index_dc_layer in range(num_dc_layers):
+        num_dc_layerss = 1
+        for index_dc_layer in range(num_dc_layerss):
             # get output and input
             last_layer = model.outputs[-1]                               
             # compute kspace
-            gene_kspace = Fourier(last_layer, separate_complex=False)                
+            gene_kspace = Fourier(last_layer, separate_complex=True)                
             # affine projection
             corrected_kspace =  projected_kspace + gene_kspace * (1.0 - mask_kspace)
 
             # inverse fft
             corrected_complex = tf.ifft2d(corrected_kspace)
-            
-            # get abs
-            corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
-            
+            image_size = tf.shape(corrected_complex)
+       
+            ## get abs
+            #corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
+           
+            #print('corrected_complex', corrected_complex.get_shape())
+ 
+            #get real and imaginary parts
+            corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, 200, 100, 1])
+            corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, 200, 100, 1])
+           
+            print('size_corrected_real', corrected_real.get_shape())
+
+            corrected_real_concat = tf.concat([corrected_real, corrected_imag], axis=3)
+
+            print('corrected_concat', corrected_real_concat.get_shape())
+            print('channels', channels)
+
             # reshape
-            labels_size = tf.shape(labels)
-            corrected_mag = tf.reshape(corrected_mag, labels_size)
-            model.add_layer(corrected_mag)
+            #labels_size = tf.shape(labels)
+            #corrected_mag = tf.reshape(corrected_mag, labels_size)
+            model.add_layer(corrected_real_concat)
 
             # concat
             # model.add_concat(corrected_mag)
 
             # mixing and project to image domain
-            model.add_residual_block(channels, mapsize=mapsize)
+            # model.add_residual_block(channels, mapsize=mapsize)
             # model.add_conv2d(channels, mapsize=1, stride=1, stddev_factor=1.)        
             # final output
             
             # model.add_sigmoid()
 
-        print('variational network with DC correction', model.outputs)
+        #print('variational network with DC correction', model.outputs)
 
     
     new_vars  = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -716,7 +735,7 @@ def _generator_model_with_scale(sess, features, labels, channels, layer_output_s
 
     return model.get_output(), gene_vars, output_layers
 
-def create_model(sess, features, labels, architecture='resnet'):
+def create_model(sess, features, labels, masks, architecture='resnet'):
     # sess: TF sesson
     # features: input, for SR/CS it is the input image
     # labels: output, for SR/CS it is the groundtruth image
@@ -725,6 +744,8 @@ def create_model(sess, features, labels, architecture='resnet'):
     rows      = int(features.get_shape()[1])
     cols      = int(features.get_shape()[2])
     channels  = int(features.get_shape()[3])
+
+    print('channels', features.get_shape())
 
     gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
 
@@ -740,19 +761,51 @@ def create_model(sess, features, labels, architecture='resnet'):
                 num_dc_layers = int(architecture.split('var')[-1])
             except:
                 pass
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,
+        function_generator = lambda x,y,z,m,w: _generator_model_with_scale(x,y,z,m,w,
                                                 num_dc_layers=num_dc_layers, layer_output_skip=7)
     else:
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(x,y,z,w,
+        function_generator = lambda x,y,z,m,w: _generator_model_with_scale(x,y,z,m,w,
                                                 num_dc_layers=0, layer_output_skip=7)
+
+
+
     with tf.variable_scope('gene') as scope:
-        gene_output, gene_var_list, gene_layers = function_generator(sess, features, labels, 1)
-                    
+
+        gene_output_1, gene_var_list, gene_layers_1 = function_generator(sess, features, labels, masks, 1)                      
         scope.reuse_variables()
 
+        gene_output_2, _ , gene_layers_2 = function_generator(sess, gene_output_1, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_3, _ , gene_layers_3 = function_generator(sess, gene_output_2, labels, masks, 1)
+        scope.reuse_variables()
+
+       
+        gene_output_real = gene_output_3
+        gene_output = tf.abs(tf.complex(gene_output_real[:,:,:,0], gene_output_real[:,:,:,1]))
+        #print('gene_output_train', gene_output.get_shape()) 
+        gene_output = tf.reshape(gene_output, [FLAGS.batch_size, rows, cols, 1])
+        gene_layers = gene_layers_1
+
+
         # for testing input
-        gene_moutput, _ , gene_mlayers= function_generator(sess, gene_minput, labels, 1)
+        gene_moutput_1, _ , gene_mlayers_1 = function_generator(sess, gene_minput, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_2, _ , gene_mlayers_2 = function_generator(sess, gene_moutput_1, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_3, _ , gene_mlayers_3 = function_generator(sess, gene_moutput_2, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_real = gene_moutput_3
+        gene_moutput = tf.abs(tf.complex(gene_moutput_real[:,:,:,0], gene_moutput_real[:,:,:,1]))
+        #print('gene_moutput_test', gene_moutput.get_shape())
+        gene_moutput = tf.reshape(gene_moutput, [FLAGS.batch_size, rows, cols, 1])
+        gene_mlayers = gene_mlayers_1
+
                     
+
     # Discriminator with real data
     disc_real_input = tf.identity(labels, name='disc_real_input')
 
@@ -856,7 +909,7 @@ def loss_DSSIS_tf11(y_true, y_pred, patch_size=5, batch_size=-1):
     # ssim = tf.select(tf.is_nan(ssim), K.zeros_like(ssim), ssim)
     return tf.reduce_mean(((1.0 - ssim) / 2), name='ssim_loss')
 
-def create_generator_loss(disc_output, gene_output, features, labels):
+def create_generator_loss(disc_output, gene_output, features, labels, masks):
     # I.e. did we fool the discriminator?
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_output, labels=tf.ones_like(disc_output))
     gene_ce_loss  = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
@@ -876,7 +929,7 @@ def create_generator_loss(disc_output, gene_output, features, labels):
     
     # mask to get affine projection error
     threshold_zero = 1./255.
-    feature_mask = tf.greater(tf.abs(feature_kspace),threshold_zero)
+    feature_mask = masks #tf.greater(tf.abs(feature_kspace),threshold_zero)
     print('mask shape , get_shape():', feature_mask.get_shape())
 
     loss_kspace = tf.cast(tf.abs(tf.square(gene_kspace - feature_kspace)),tf.float32)*tf.cast(feature_mask,tf.float32)
