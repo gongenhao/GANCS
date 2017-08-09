@@ -627,7 +627,7 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
 
     #image_size = tf.shape(features)
     mapsize = 3
-    res_units  = [128, 128, 128] #[64, 32, 16]#[256, 128, 96]
+    res_units  = [128, 128] #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -675,8 +675,14 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
         # sampled kspace
         first_layer = features
         feature_kspace = Fourier(first_layer, separate_complex=True)        
-        mask_kspace = masks #tf.greater(tf.abs(feature_kspace),threshold_zero)        
-        mask_kspace = tf.cast(mask_kspace, tf.complex64) * mix_DC
+        #mask_kspace = tf.cast(masks, dtype=tf.float32) #tf.greater(tf.abs(feature_kspace),threshold_zero)  
+
+        #print('sampling_rate', sess.run(tf.reduce_sum(tf.abs(mask_kspace)) / tf.size(mask_kspace)))
+      
+        mask_kspace = tf.cast(masks, tf.complex64) * mix_DC
+        #print('sampling_size', sess.run(tf.reduce_sum(tf.abs(mask_kspace))))
+        #print('mask_kspace', sess.run(mask_kspace))
+
         projected_kspace = feature_kspace * mask_kspace
 
         # add dc layers
@@ -702,12 +708,12 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
             corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, 200, 100, 1])
             corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, 200, 100, 1])
            
-            print('size_corrected_real', corrected_real.get_shape())
+            #print('size_corrected_real', corrected_real.get_shape())
 
             corrected_real_concat = tf.concat([corrected_real, corrected_imag], axis=3)
 
-            print('corrected_concat', corrected_real_concat.get_shape())
-            print('channels', channels)
+            #print('corrected_concat', corrected_real_concat.get_shape())
+            #print('channels', channels)
 
             # reshape
             #labels_size = tf.shape(labels)
@@ -745,7 +751,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
     cols      = int(features.get_shape()[2])
     channels  = int(features.get_shape()[3])
 
-    print('channels', features.get_shape())
+    #print('channels', features.get_shape())
 
     gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
 
@@ -780,26 +786,133 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         gene_output_3, _ , gene_layers_3 = function_generator(sess, gene_output_2, labels, masks, 1)
         scope.reuse_variables()
 
-       
-        gene_output_real = gene_output_1
-        gene_output = tf.abs(tf.complex(gene_output_real[:,:,:,0], gene_output_real[:,:,:,1]))
+        gene_output_4, _ , gene_layers_4 = function_generator(sess, gene_output_3, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_5, _ , gene_layers_5 = function_generator(sess, gene_output_4, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_6, _ , gene_layers_6 = function_generator(sess, gene_output_5, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_7, _ , gene_layers_7 = function_generator(sess, gene_output_6, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_8, _ , gene_layers_8 = function_generator(sess, gene_output_7, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_9, _ , gene_layers_9 = function_generator(sess, gene_output_8, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_10, _ , gene_layers_10 = function_generator(sess, gene_output_9, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_11, _ , gene_layers_11 = function_generator(sess, gene_output_10, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_12, _ , gene_layers_12 = function_generator(sess, gene_output_11, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_13, _ , gene_layers_13 = function_generator(sess, gene_output_12, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_14, _ , gene_layers_14 = function_generator(sess, gene_output_13, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_15, _ , gene_layers_15 = function_generator(sess, gene_output_14, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_16, _ , gene_layers_16 = function_generator(sess, gene_output_15, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_17, _ , gene_layers_17 = function_generator(sess, gene_output_16, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_18, _ , gene_layers_18 = function_generator(sess, gene_output_17, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_19, _ , gene_layers_19 = function_generator(sess, gene_output_18, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_output_20, _ , gene_layers_20 = function_generator(sess, gene_output_19, labels, masks, 1)
+        scope.reuse_variables()
+
+
+        gene_output_real = gene_output_2
+        gene_output_complex = tf.complex(gene_output_real[:,:,:,0], gene_output_real[:,:,:,1])
+        gene_output = tf.abs(gene_output_complex)
         #print('gene_output_train', gene_output.get_shape()) 
         gene_output = tf.reshape(gene_output, [FLAGS.batch_size, rows, cols, 1])
         gene_layers = gene_layers_1
+
 
 
         # for testing input
         gene_moutput_1, _ , gene_mlayers_1 = function_generator(sess, gene_minput, labels, masks, 1)
         scope.reuse_variables()
 
-        gene_moutput_2, _ , gene_mlayers_2 = function_generator(sess, gene_moutput_1, labels, masks, 1)
+        gene_moutput_2, _ , gene_mlayers_2= function_generator(sess, gene_moutput_1, labels, masks, 1)
         scope.reuse_variables()
 
-        gene_moutput_3, _ , gene_mlayers_3 = function_generator(sess, gene_moutput_2, labels, masks, 1)
+        gene_moutput_3, _ , gene_mlayers_3= function_generator(sess, gene_moutput_2, labels, masks, 1)
         scope.reuse_variables()
 
-        gene_moutput_real = gene_moutput_1
-        gene_moutput = tf.abs(tf.complex(gene_moutput_real[:,:,:,0], gene_moutput_real[:,:,:,1]))
+        gene_moutput_4, _ , gene_mlayers_4= function_generator(sess, gene_moutput_3, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_5, _ , gene_mlayers_5= function_generator(sess, gene_moutput_4, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_6, _ , gene_mlayers_6= function_generator(sess, gene_moutput_5, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_7, _ , gene_mlayers_7= function_generator(sess, gene_moutput_6, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_8, _ , gene_mlayers_8= function_generator(sess, gene_moutput_7, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_9, _ , gene_mlayers_9= function_generator(sess, gene_moutput_8, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_10, _ , gene_mlayers_10= function_generator(sess, gene_moutput_9, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_11, _ , gene_mlayers_11= function_generator(sess, gene_moutput_10, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_12, _ , gene_mlayers_12= function_generator(sess, gene_moutput_11, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_13, _ , gene_mlayers_13= function_generator(sess, gene_moutput_12, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_14, _ , gene_mlayers_14= function_generator(sess, gene_moutput_13, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_15, _ , gene_mlayers_15= function_generator(sess, gene_moutput_14, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_16, _ , gene_mlayers_16= function_generator(sess, gene_moutput_15, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_17, _ , gene_mlayers_17= function_generator(sess, gene_moutput_16, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_18, _ , gene_mlayers_18= function_generator(sess, gene_moutput_17, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_19, _ , gene_mlayers_19= function_generator(sess, gene_moutput_18, labels, masks, 1)
+        scope.reuse_variables()
+
+        gene_moutput_20, _ , gene_mlayers_20= function_generator(sess, gene_moutput_19, labels, masks, 1)
+        scope.reuse_variables()
+
+
+
+        gene_moutput_real = gene_moutput_2
+        gene_moutput_complex = tf.complex(gene_moutput_real[:,:,:,0], gene_moutput_real[:,:,:,1])
+        gene_moutput = tf.abs(gene_moutput_complex)
         #print('gene_moutput_test', gene_moutput.get_shape())
         gene_moutput = tf.reshape(gene_moutput, [FLAGS.batch_size, rows, cols, 1])
         gene_mlayers = gene_mlayers_1
@@ -811,16 +924,16 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
 
     # TBD: Is there a better way to instance the discriminator?
     with tf.variable_scope('disc') as scope:
-        print('hybrid_disc', FLAGS.hybrid_disc)
+        #print('hybrid_disc', FLAGS.hybrid_disc)
         disc_real_output, disc_var_list, disc_layers = \
                 _discriminator_model(sess, features, disc_real_input, hybrid_disc=FLAGS.hybrid_disc)
 
         scope.reuse_variables()
-            
-        disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output, hybrid_disc=FLAGS.hybrid_disc)
+        gene_output_abs = tf.abs(gene_output)
+        disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output_abs, hybrid_disc=FLAGS.hybrid_disc)
 
-    return [gene_minput,      gene_moutput,
-            gene_output,      gene_var_list, gene_layers, gene_mlayers,
+    return [gene_minput,      gene_moutput, gene_moutput_complex, 
+            gene_output, gene_output_complex,     gene_var_list, gene_layers, gene_mlayers,
             disc_real_output, disc_fake_output, disc_var_list, disc_layers]    
 
 
@@ -891,25 +1004,25 @@ def loss_DSSIS_tf11(y_true, y_pred, patch_size=5, batch_size=-1):
     # y_pred = tf.transpose(y_pred, [0, 2, 3, 1])
     patches_true = tf.extract_image_patches(y_true, [1, patch_size, patch_size, 1], [1, 2, 2, 1], [1, 1, 1, 1], "SAME")
     patches_pred = tf.extract_image_patches(y_pred, [1, patch_size, patch_size, 1], [1, 2, 2, 1], [1, 1, 1, 1], "SAME")
-    print(patches_true, patches_pred)
+    #print(patches_true, patches_pred)
     u_true = keras_mean(patches_true, axis=3)
     u_pred = keras_mean(patches_pred, axis=3)
-    print(u_true, u_pred)
+    #print(u_true, u_pred)
     var_true = keras_var(patches_true, axis=3)
     var_pred = keras_var(patches_pred, axis=3)
     std_true = tf.sqrt(var_true)
     std_pred = tf.sqrt(var_pred)
-    print(std_true, std_pred)
+    #print(std_true, std_pred)
     c1 = 0.01 ** 2
     c2 = 0.03 ** 2
     ssim = (2 * u_true * u_pred + c1) * (2 * std_pred * std_true + c2)
     denom = (u_true ** 2 + u_pred ** 2 + c1) * (var_pred + var_true + c2)
     ssim /= denom
-    print(ssim)
+    #print(ssim)
     # ssim = tf.select(tf.is_nan(ssim), K.zeros_like(ssim), ssim)
     return tf.reduce_mean(((1.0 - ssim) / 2), name='ssim_loss')
 
-def create_generator_loss(disc_output, gene_output, features, labels, masks):
+def create_generator_loss(disc_output, gene_output, gene_output_complex,  features, labels, masks):
     # I.e. did we fool the discriminator?
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_output, labels=tf.ones_like(disc_output))
     gene_ce_loss  = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
@@ -924,20 +1037,20 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):
     # downscaled = _downscale(gene_output, K)
 
     # fourier_transform
-    gene_kspace = Fourier(gene_output, separate_complex=False)
+    gene_kspace = Fourier(gene_output_complex, separate_complex=False)
     feature_kspace = Fourier(features, separate_complex=True)
     
     # mask to get affine projection error
     threshold_zero = 1./255.
     feature_mask = masks #tf.greater(tf.abs(feature_kspace),threshold_zero)
-    print('mask shape , get_shape():', feature_mask.get_shape())
+    #print('mask shape , get_shape():', feature_mask.get_shape())
 
     loss_kspace = tf.cast(tf.abs(tf.square(gene_kspace - feature_kspace)),tf.float32)*tf.cast(feature_mask,tf.float32)
-    print('loss_kspace shape , get_shape():', loss_kspace.get_shape())
+    #print('loss_kspace shape , get_shape():', loss_kspace.get_shape())
 
 
     # compare with real output
-    print('real output , get_shape():', labels.get_shape())
+    #print('real output , get_shape():', labels.get_shape())
         
     # data consistency
     gene_dc_loss  = tf.reduce_mean(loss_kspace, name='gene_dc_loss')

@@ -52,6 +52,9 @@ def _summarize_progress(train_data, feature, label, gene_output,
     scipy.misc.toimage(image, cmin=0., cmax=1.).save(filename)
     print("    Saved %s" % (filename,))
 
+
+
+    #gene_output_abs = np.abs(gene_output)
     # save layers and var_list
     if gene_param is not None:
         #add feature 
