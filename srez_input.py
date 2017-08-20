@@ -14,7 +14,7 @@ def generate_mask_alpha(size=[128,128], r_factor_designed=5.0, r_alpha=3, axis_u
     num_phase_encode = size[axis_undersample]
     num_phase_sampled = int(np.floor(num_phase_encode/r_factor_designed))
     # coordinate
-    coordinate_normalized = np.array(xrange(num_phase_encode))
+    coordinate_normalized = np.array(range(num_phase_encode))
     coordinate_normalized = np.abs(coordinate_normalized-num_phase_encode/2)/(num_phase_encode/2.0)
     prob_sample = coordinate_normalized**r_alpha
     prob_sample = prob_sample/sum(prob_sample)
@@ -29,11 +29,11 @@ def generate_mask_alpha(size=[128,128], r_factor_designed=5.0, r_alpha=3, axis_u
 
     # acs                
     if axis_undersample == 0:
-        mask[:(acs+1)/2,:]=1
-        mask[-acs/2:,:]=1
+        mask[:int((acs+1)/2),:]=1
+        mask[-int(acs/2):,:]=1
     else:
-        mask[:,:(acs+1)/2]=1
-        mask[:,-acs/2:]=1
+        mask[:,:int((acs+1)/2)]=1
+        mask[:,-int(acs/2):]=1
 
     # compute reduction
     r_factor = len(mask.flatten())/sum(mask.flatten())
@@ -91,7 +91,13 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     key, value_input = reader_input.read(filename_queue_input)
     channels = 3
     image_input = tf.image.decode_jpeg(value_input, channels=channels, name="input_image")
-    image_input.set_shape([None, None, channels])
+    image_input.set_shape([256, 256, channels])
+
+    print('size_input_image', image_input.get_shape())
+
+    #choose the magnitude
+    image_input = image_input[0:image_size[0],0:image_size[1]]
+
 
     # cast image to float in 0~1
     image_input = tf.cast(image_input, tf.float32)/255.0

@@ -112,7 +112,7 @@ tf.app.flags.DEFINE_float('epsilon', 1e-8,
 tf.app.flags.DEFINE_string('run', 'demo',
                             "Which operation to run. [demo|train]")   #demo
 
-tf.app.flags.DEFINE_float('gene_l1l2_factor', 0,
+tf.app.flags.DEFINE_float('gene_l1l2_factor', 1,
                           "The ratio of l1 l2 factor, MSE=alpha*l1+(1-alpha)*l2")
 
 tf.app.flags.DEFINE_float('gene_ssim_factor', 0.0,
@@ -364,7 +364,7 @@ def _train():
         index_permutation_split = random.sample(num_filename_train, num_filename_train)
         filenames_input_train = [filenames_input_train[x] for x in index_permutation_split]
         filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
-    print(np.shape(filenames_input_train))
+        #print(np.shape(filenames_input_train))
 
     if FLAGS.permutation_split:
         index_permutation_split = random.sample(num_filename_test, num_filename_test)
@@ -412,7 +412,7 @@ def _train():
         test_filenames_output = [test_filenames_output[x] for x in index_sample_test_selected]
         #print('randomly sampled {0} from {1} test samples'.format(len(test_filenames_input), len(filenames_inp/.ut[:-FLAGS.sample_test])))
 
-    print('test_filenames_input',test_filenames_input)            
+    #print('test_filenames_input',test_filenames_input)            
 
     # get undersample mask
     from scipy import io as sio
@@ -465,10 +465,10 @@ def _train():
     # Create and initialize model
     [gene_minput, gene_moutput, gene_moutput_complex, \
      gene_output, gene_output_complex, gene_var_list, gene_layers, gene_mlayers, \
-     disc_real_output, disc_fake_output, disc_var_list, disc_layers] = \
+     disc_real_output, disc_fake_output, disc_moutput, disc_var_list, disc_layers, disc_mlayers] = \
             srez_model.create_model(sess, noisy_train_features, train_labels, train_masks, architecture=FLAGS.architecture)
 
-    gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses = srez_model.create_generator_loss(disc_fake_output, gene_output, gene_output_complex, train_features, train_labels, train_masks)
+    gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses, gene_mse_factor = srez_model.create_generator_loss(disc_fake_output, gene_output, gene_output_complex, train_features, train_labels, train_masks)
     disc_real_loss, disc_fake_loss = \
                      srez_model.create_discriminator_loss(disc_real_output, disc_fake_output)
     disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')

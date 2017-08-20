@@ -627,7 +627,7 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
 
     #image_size = tf.shape(features)
     mapsize = 3
-    res_units  = [128, 128, 128] #[64, 32, 16]#[256, 128, 96]
+    res_units  = [128, 128, 128, 128, 128] #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0,0,0,0,0,0]
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -705,8 +705,8 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
             #print('corrected_complex', corrected_complex.get_shape())
  
             #get real and imaginary parts
-            corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, 200, 100, 1])
-            corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, 200, 100, 1])
+            corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, 256, 128, 1])
+            corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, 256, 128, 1])
            
             #print('size_corrected_real', corrected_real.get_shape())
 
@@ -924,17 +924,25 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
 
     # TBD: Is there a better way to instance the discriminator?
     with tf.variable_scope('disc') as scope:
+    
         #print('hybrid_disc', FLAGS.hybrid_disc)
         disc_real_output, disc_var_list, disc_layers = \
                 _discriminator_model(sess, features, disc_real_input, hybrid_disc=FLAGS.hybrid_disc)
 
         scope.reuse_variables()
-        gene_output_abs = tf.abs(gene_output)
-        disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output_abs, hybrid_disc=FLAGS.hybrid_disc)
+        disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output, hybrid_disc=FLAGS.hybrid_disc)
+
+    
+        #test
+        scope.reuse_variables()
+        disc_moutput, _, disc_mlayers = \
+                _discriminator_model(sess, features, gene_moutput, hybrid_disc=FLAGS.hybrid_disc)
+
+
 
     return [gene_minput,      gene_moutput, gene_moutput_complex, 
             gene_output, gene_output_complex,     gene_var_list, gene_layers, gene_mlayers,
-            disc_real_output, disc_fake_output, disc_var_list, disc_layers]    
+            disc_real_output, disc_fake_output, disc_moutput, disc_var_list, disc_layers, disc_mlayers]    
 
 
 # SSIM
@@ -1074,15 +1082,25 @@ def create_generator_loss(disc_output, gene_output, gene_output_complex,  featur
     gene_non_mse_l2     = tf.add((1.0 - FLAGS.gene_dc_factor) * gene_fool_loss,
                            FLAGS.gene_dc_factor * gene_dc_loss, name='gene_nonmse_l2')
     
-    #total loss = fool-loss + data consistency loss + mse forward-passing loss
-    gene_loss     = tf.add((1.0 - FLAGS.gene_mse_factor) * gene_non_mse_l2, 
-                            FLAGS.gene_mse_factor * gene_mixmse_loss, name='gene_loss')
     
+    gene_mse_factor  = tf.placeholder(dtype=tf.float32, name='gene_mse_factor')
+
+
+    #total loss = fool-loss + data consistency loss + mse forward-passing loss
+    #gene_loss     = tf.add((1.0 - FLAGS.gene_mse_factor) * gene_non_mse_l2, 
+                            #FLAGS.gene_mse_factor * gene_mixmse_loss, name='gene_loss')
+    
+    #gene_mse_factor as a parameter
+    gene_loss     = tf.add((1.0 - gene_mse_factor) * gene_non_mse_l2,
+                                  gene_mse_factor * gene_mixmse_loss, name='gene_loss')
+
+
+
     #list of loss
     list_gene_lose = [gene_mixmse_loss, gene_mse_loss, gene_l2_loss, gene_l1_loss, gene_ssim_loss, # regression loss
                         gene_dc_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
-    return gene_loss, gene_dc_loss, gene_fool_loss, list_gene_lose
+    return gene_loss, gene_dc_loss, gene_fool_loss, list_gene_lose, gene_mse_factor
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output):

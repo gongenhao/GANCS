@@ -144,7 +144,14 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
         batch += 1
         gene_ls_loss = gene_dc_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
 
-        feed_dict = {td.learning_rate : lrval}
+        #first train based on MSE and then GAN
+        if batch < 2e3+1:
+           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1}
+        else:
+           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : (1/np.sqrt(batch+6-2e3)) + 0.75}
+
+
+        #feed_dict = {td.learning_rate : lrval}
         
         # for training 
         # don't export var and layers for train to reduce size
@@ -157,14 +164,15 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
         
         # get all losses
         list_gene_losses = [float(x) for x in list_gene_losses]
-    
+        gene_mse_loss = list_gene_losses[1]   
+
         # verbose training progress
         if batch % 10 == 0:
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
-            err_log = 'Progress[{0:3f}%], ETA[{1:4f}m], Batch [{2:4f}], G_Loss[{3}], G_DC_Loss[{4:3.3f}], G_LS_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(
+            err_log = 'Progress[{0:3f}%], ETA[{1:4f}m], Batch [{2:4f}], G_Loss[{3}], G_mse_Loss[{4:3.3f}], G_LS_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(
                     int(100*elapsed/FLAGS.train_time), FLAGS.train_time - elapsed, batch, 
-                    gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
+                    gene_loss, gene_mse_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
             print(err_log)
             # update err loss
             err_loss = [int(batch), float(gene_loss), float(gene_dc_loss), 
@@ -193,11 +201,11 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 # ops = [td.gene_moutput, td.gene_mlayers, td.gene_var_list, td.disc_var_list, td.disc_layers]
                 # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
                 
-                ops = [td.gene_moutput, td.gene_mlayers, td.disc_layers]
+                ops = [td.gene_moutput, td.gene_mlayers, td.disc_mlayers, td.disc_moutput]
                 
                 # get timing
                 forward_passing_time = time.time()
-                gene_output, gene_layers, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
+                gene_output, gene_layers, disc_layers, disc_output= td.sess.run(ops, feed_dict=feed_dict)       
                 inference_time = time.time() - forward_passing_time
 
                 # print('gene_var_list',[x.shape for x in gene_var_list])
