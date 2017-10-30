@@ -25,13 +25,6 @@ http://wiseodd.github.io/techblog/2017/02/04/wasserstein-gan/
 ## Deep Generative Adversarial Networks for CS MRI
 Magnetic resonance imaging (MRI) suffers from aliasing artifacts when it is highly undersampled for fast imaging. Conventional CS MRI reconstruction uses regularized iterative reconstruction based on pre-defined sparsity transform, which usually include time-consuming iterative optimization and may result in undesired artifacts such as oversmoothing. Here we propose a novel CS framework that permeates benefits from deep learning and generative adversarial networks (GAN) to modeling a manifold of MR images from historical patients. Extensive evaluations on a large MRI datasets of pediatric pateints show it results in superior perforamnce, retrieves image with improved quality and finer details relative to conventional CS and pixel-wise deep learning schemes. 
 
-## descriminator related loss
-We have been exploring different loss functions for GAN, including:
-
-* log-loss
-* LS loss (better than log-loss, use as default, easy to tune and optimize)
-* Cycle-GAN/WGAN loss (todo)
-
 ## Undersampling
 ### 1D undersampling
 1D undersampling is generated using the variable density distribution. 
@@ -49,7 +42,14 @@ Several models are explored including ResNet-ish models from super-resolution pa
 ## Descriminator Model
 Currently we are using 4*(Conv-BN-RELU-POOL)+2*(CONV-BN-RELU)+CONV+MEAN+softmax (for logloss)
 
-## Loss formulation
+### descriminator related loss
+We have been exploring different loss functions for GAN, including:
+
+* log-loss
+* LS loss (better than log-loss, use as default, easy to tune and optimize)
+* Cycle-GAN/WGAN loss (todo)
+
+### Loss formulation
 Loss is a mixed combination with: 1) Data consistency loss, 2) pixel-wise MSE/L1/L2 loss and 3) LS-GAN loss
 
 `FLAGS.gene_log_factor = 0 # log loss vs least-square loss`
@@ -79,7 +79,17 @@ Multiple results are exported while traning
 * layers (some layers are skipped) of generator and detectors are exported into json after each epoch.
 
 
-## Training example 
+# Code structures
+
+## Files
+* `srez_main.py` handles commendline arguments
+* `srez_input.py` loads from input files, conducting undersampling or loading/extracting the undersampled patterns, 
+* `srez_model.py` defines Generator and Discriminator models
+* `srez_train.py` trains model in batch and export checkpoints and results for progress summaries 
+
+## Usage example:
+
+### Training example 
 (currently working on t2)
 `python srez_main.py --dataset_input /home/enhaog/GANCS/srez/dataset_MRI/phantom --batch_size 8 --run train --summary_period 123 --sample_size 256 --train_time 10  --train_dir train_save_all --R_factor 4 --R_alpha 3 --R_seed 0`              
 
