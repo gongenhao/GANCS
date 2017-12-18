@@ -201,25 +201,30 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 # ops = [td.gene_moutput, td.gene_mlayers, td.gene_var_list, td.disc_var_list, td.disc_layers]
                 # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
                 
-                ops = [td.gene_moutput, td.gene_mlayers, td.disc_mlayers, td.disc_moutput]
+                ops = [td.gene_moutput, td.gene_mlayers, td.disc_mlayers, td.disc_moutput, td.disc_gradients]
                 
                 # get timing
                 forward_passing_time = time.time()
                 gene_output, gene_layers, disc_layers, disc_output= td.sess.run(ops, feed_dict=feed_dict)       
                 inference_time = time.time() - forward_passing_time
 
+                # output shapes
+                print('disc loss gradients:', [x.shape for x in disc_gradients])
                 # print('gene_var_list',[x.shape for x in gene_var_list])
                 print('gene_layers',[x.shape for x in gene_layers])
                 # print('disc_var_list',[x.shape for x in disc_var_list])
                 print('disc_layers',[x.shape for x in disc_layers])
 
                 # save record
+                # update 1217 add gradients
                 gene_param = {'train_log':err_log,
                               'train_loss':accumuated_err_loss,
                               'gene_loss':list_gene_losses,
                               'inference_time':inference_time,
                               'gene_layers':[x.tolist() for x in gene_layers if x.shape[-1]<10], 
-                              'disc_layers':[x.tolist() for x in disc_layers]}                
+                              'disc_layers':[x.tolist() for x in disc_layers],
+                              'disc_gradients':[x.tolist() for x in disc_gradients]}                
+
                 # gene layers are too large
                 if index_batch_test>0:
                     gene_param['gene_layers']=[]
